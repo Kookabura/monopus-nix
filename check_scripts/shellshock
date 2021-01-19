@@ -1,0 +1,53 @@
+#!/bin/bash
+
+# Script name: check_lin_shellshock.sh
+# Version: 0.14.9.28
+# Author: Willem D'Haese
+# Created on: 28/09/2014
+# Purpose: Quick action bash script that will test a Linux server to see if it is vulnerable to Shellshock
+# History:
+#       28/09/2014 => First commit
+#       29/09/2014 => Bug with second check, which was copy of first
+# Copyright:
+# This program is free software: you can redistribute it and/or modify it under the terms of the
+# GNU General Public License as published by the Free Software Foundation, either version 3 of
+# the License, or (at your option) any later version.
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+# without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU General Public License for more details.You should have received a copy of the GNU
+# General Public License along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+TEST1=$(env X="() { :;} ; echo busted" `which bash` -c "echo completed")
+FAILEDTESTS=0
+EXITCODE=3
+
+if [[ $TEST1 =~ .*busted.* ]]
+then
+        EXITCODE=2
+        ((FAILEDTESTS++))
+fi
+
+
+TEST2=$(env X='() { (a)=>\' sh -c "echo date"; cat echo 2>/dev/null)
+
+if [[ $TEST2 =~ .*date.* ]]
+then
+        if [ $FAILEDTESTS -eq 0 ]
+        then
+                EXITCODE=0
+                echo "shellshock.ok::"
+        else
+                echo "shellshock.cri_test_1::val==CVE2014-6271"
+        fi
+else
+        EXITCODE=2
+        if [ $FAILEDTESTS -eq 1 ]
+        then
+                echo "shellshock.cri_all_tests::val==CVE2014-6271,CVE2014-7169"
+        else
+                echo "shellshock.cri_test_2::val==CVE2014-7169"
+        fi
+fi
+
+exit $EXITCODE
+

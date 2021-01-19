@@ -1,0 +1,15 @@
+# To be put to /etc/systemd/system/
+[Unit]
+Description=Monopus client
+#After=beanstalkd.service
+#OnFailure=unit-status-mail@.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+PIDFile=/var/run/monopus.pid
+ExecStart=/opt/monopus/monopus
+
+[Install]
+WantedBy=multi-user.target

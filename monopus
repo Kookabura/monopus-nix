@@ -1,0 +1,274 @@
+#!/bin/bash
+# pooh@aikipooh.name
+
+if [ `hostname` = dell ]; then
+  . common.sh
+else
+  . /opt/monopus/common.sh
+fi
+
+##### No config past this line #####
+
+### Utility functions
+
+# For the JSON parsing
+#declare -A output_arr
+
+log() {
+  [ "$verbose" ] && echo "$(date +%H:%M:%S) $*"
+}
+
+# Gets all values from parsed JSON (passed on stdin). Uses external output_arr
+get_all_vals() {
+  unset output_arr
+  declare -gA output_arr
+  awkout=$(awk -F '\t' '{gsub("\"", "", $1); print $1; gsub("\"", "", $2); print $2}')
+
+  while read line; do
+    if [ "$varname" ]; then
+      log "  Setting $varname to $line"
+      output_arr[$varname]="$line"
+      varname=
+    else
+      varname="${line:1:-1}"
+    fi
+  done <<< "$awkout"
+}
+
+usage() {
+  cat <<EOF >&2
+ `basename $0`: monopus service
+./`basename $0` [-h] -v
+ 	-h 		- print this message
+ 	-v		- Verbose
+EOF
+  exit 0
+}
+
+make_request() {
+  log "Data: $1"
+  data="$1&api_key=$api_key"
+  res=$(curl -s -d "$data" $api_url)
+  #res=$(<resp1.txt)
+  #res=$(<resp2.txt)
+  log "Server response: $res"
+  parsed=$($BASE/json.sh -b <<< "$res")
+  #status=$(awk '$1=="[\"success\"]"{print $2}' <<< $parsed)
+  get_all_vals <<< "$parsed"
+
+  status=${output_arr[success]}
+  if [ "$status" = false ]; then
+    echo "Error: ${output_arr[message]}"
+    exit 1
+  fi
+  # Here we have variables in output_arr  
+}
+
+### Meaningful functions
+
+# Creates site config on the endpoint
+initial_config() {
+  log "Getting our IP"
+  addr=$(curl ipinfo.io/ip)
+  memory=$(free --giga|awk '$1=="Mem:"{print $2}')
+  #drives=$(df|awk '/^\//{arr=$1","arr}END{print arr}')
+  drives=$(df --exclude-type=tmpfs|awk 'NR>1{arr=$NF","arr}END{print arr}')
+  hostname=`hostname`
+  # Strip last comma from drives
+  make_request "name=$hostname&address=$addr&os=`uname`&memory=$memory&mon_action=site/create&drives=${drives::-1}"
+
+  # Add id to a file
+  set_param $CFG_FN host_id ${output_arr[data,id]}
+}
+
+# Check subroutine for $1 cid, uses output_arr with config
+check_sub() {
+  script=$scripts_path/${checks_config[$1,command]}
+  if [ ! -f $script -o ! -x $script ]; then
+    :> /tmp/$1.out
+    return 3 # Command not found or not executable
+  fi
+
+  args=${checks_config[$1,args]}
+  # Значения параметров w и c приходят в отдельных значения warning и critical.
+  for p in critical warning; do
+    val=${checks_config[$1,$p]}
+    [ "$val" ] && args="-${p::1} $val $args"
+  done
+
+  rm -f /tmp/$1.out
+  timeout $timeout $script $args > /tmp/$1.out # 124 will mean killed
+  # retcode=$?
+  # if [ $retcode -eq 124 ]; then # Killed
+  #   :
+  # fi
+  
+  # return $retcode
+}
+
+# From output_arr
+make_checks_config() {
+  unset checks_config
+  declare -Ag checks_config
+  for k in ${!output_arr[@]}; do
+    [ "${k::14}" = "data,services," ] || continue # Skip other variables
+    checks_config[${k:14}]=${output_arr[$k]}
+  done
+  #echo "${!checks_data[@]}"
+}
+# Run on shell exit, kill all check subroutines
+do_exit() {
+  echo "In do_exit()"
+  kill ${pids[@]}
+}
+
+while getopts "?v" opt; do
+    case $opt in
+        v) verbose=1;;
+        ?|h) usage;;
+    esac
+done
+shift $((OPTIND-1))
+
+log "Getting config"
+parsed=$($BASE/json.sh -b < $CFG_FN)
+
+get_all_vals <<< "$parsed"
+api_key=${output_arr[api_key]}
+api_url=${output_arr[uri]}
+scripts_path=${output_arr[scripts_path]}
+timeout=${output_arr[timeout]}
+[ "$timeout" ] || timeout=30 # 30 seconds by default
+host_id=${output_arr[host_id]}
+
+[ -z "$api_key" -o -z "$api_url" ] && {
+  echo "Vital configuration parameters are missing"
+  exit 1
+}
+
+[ "$host_id" ] || initial_config
+
+# On interrupt need to kill them all
+#trap do_exit EXIT
+
+get_new_checks=1 # Get the checks first time
+# Just a cycle so we don't quit while the background checks are running
+while true; do
+  if [ "$get_new_checks" ]; then
+    make_request "mon_action=check/status&class=host&id=$host_id"
+    make_checks_config # Copy them to the separate structure
+
+    # Get ids of all checks
+    check_ids=$(echo "${!checks_config[@]}"|awk -F, 'BEGIN{RS=" "}{print $1}'|sort -u)
+    #check_ids=523
+    log "Cids: "$check_ids
+
+    declare -A checks # What checks should run, storing time of next invocation here, storing everything in fact
+    for cid in $check_ids; do
+      # Initialise previous state from server for everyone
+      checks[$cid,state]=${checks_config[$cid,state]}
+      # [ $cid = 513 -o $cid = 516 -o $cid = 517 ] && continue
+      [ "${checks[$cid,next_ts]}" ] || checks[$cid,next_ts]=0 # Time of the next check: will always trigger
+    done
+    get_new_checks=
+  fi
+
+  # Now start them all in parallel
+  cur_time=$(date +%s)
+  for cid in $check_ids; do
+    if [ "${checks_config[$cid,active]}" != true ]; then
+      log "$cid: not active"
+      continue
+    fi
+    # Server checks
+    if [ "${checks_config[$cid,passive]}" = false ]; then
+      log "$cid: passive is false"
+      continue
+    fi
+
+#     приходить - это unknown в рамках сервиса. И значение check_not_found в параметре
+# message.
+
+    # Check if we need to start it
+    state=${checks[$cid,state]}
+    next_ts=${checks[$cid,next_ts]}
+    [ $state -eq 0 -a $next_ts -ne 0 -a $next_ts -gt $cur_time ] && continue
+    # In any other case need to run the check
+    log "$cid: Starting check"
+
+    check_sub $cid &
+    checks[$cid,pid]=$!
+  done
+
+  #log "Checks: ${!checks[@]}"
+  # Now wait for their completion
+  for cid in $check_ids; do
+    if [ -z "${checks[$cid,pid]}" ]; then
+      echo "$cid: Check not started"
+      continue
+    fi
+    
+    echo "$cid: Waiting"
+    wait ${checks[$cid,pid]}
+    state=$?
+    #res=${checks[$cid,result]}
+    prev_state=${checks[$cid,state]}
+    log "$cid: State: $prev_state → $state"
+    # read state output <<< $res
+    output=$(</tmp/$cid.out) # Empty if there's no file
+    
+    need_send=
+    # [ $prev_state -eq 0 ] && need_send=1
+    cur_time=$(date +%s)
+    next_ts=${checks[$cid,next_ts]}
+    if [ $state -ne $prev_state ]; then
+      log "$cid: State has changed" # Need to send
+      need_send=1
+    else # The time has elapsed?
+      if [ $next_ts -eq 0 -o $next_ts -le $cur_time ]; then
+	need_send=1
+	# And set next interval
+      fi
+    fi
+
+    checks[$cid,state]=$state # Update previous code
+
+    if [ "$need_send" ]; then
+      # Setup next wake up time (if status is not 0, it'll start anyway)
+      interval=${checks_config[$cid,interval]}
+      next_ts=$(date +%s)
+      next_ts=$((next_ts+$interval*60))
+      checks[$cid,next_ts]=$next_ts
+      log "$cid: next_ts=$next_ts"
+      
+      log "$cid: Sending to server"
+      make_request "id=$cid&mon_action=check/handle_result&result=$output&state=$state"
+      if [ ${output_arr[data,active]} != true ]; then # Remove the check
+	log "$cid: Removing the check, it's not active anymore"
+	for k in ${!checks[@]}; do [ ${a%%,*} = $cid ] && unset checks[$k]; done
+      fi
+
+      # Если в ответе мы приходит параметр push_checks=true, то мы запрашиваем
+      # полный список сервисов с сервера
+      [ "${output_arr[data,push_checks]}" ] && get_new_checks=1
+    fi
+    # В финале выполнения служба удаляет отключенные проверки из очереди. Если
+    # очередь пустая, то запрашивает полный список проверок с сервера.
+    [ "${!checks[*]}" ] || get_new_checks=1
+  done
+  #break
+  
+  # next_ts=$(date +%s)
+  # if [ $state -ne 0 ]; then
+  #   log "$cid: state is not zero, checking every minute"
+  # else
+  #   interval=${checks_config[$cid,interval]}
+  #   next_ts=$((next_ts+$interval*60))
+  # fi
+  # checks[$cid,next_ts]=$next_ts
+  # checks[$cid,state]=$state # Update previous code
+
+  log "Sleeping until next round"
+  sleep 60 # Can do something here
+  #sleep 5
+done

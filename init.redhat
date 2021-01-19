@@ -1,0 +1,55 @@
+#!/bin/bash
+#
+# Init file for monopus monitoring daemon
+#
+# chkconfig: 2345 60 80
+# description: Monopus monitoring daemon
+#
+
+# source function library
+. /etc/rc.d/init.d/functions
+
+RETVAL=0
+FriendlyName="Monopus"
+SRV=/opt/monopus/monopus
+PID_FN=/var/run/monopus.pid
+
+start()
+{
+  if [ -f $PID_FN ]; then
+    cat <<EOF >&2
+Looks like it's running already.
+If it's not, remove $PID_FN and try again.
+EOF
+    RETVAL=1
+    failure "$FriendlyName startup"
+    return
+  fi
+  echo -n $"Starting $FriendlyName: "
+  $SRV &
+  echo $! > $PID_FN
+  success "$FriendlyName startup"
+  echo
+}
+
+stop()
+{
+  echo -n $"Stopping $FriendlyName: "
+  killproc -p $PID_FN $SRV
+  RETVAL=$?
+  echo
+  return $RETVAL
+}
+
+case "$1" in
+  start) start;;
+  stop) stop;;
+  restart) stop; start;;
+  reload) ;;
+  report) ;;
+  status) status $SRV; RETVAL=$?;;
+  *)
+    echo $"Usage: $0 {start|stop|restart|status}"
+    RETVAL=1
+esac
+exit $RETVAL
