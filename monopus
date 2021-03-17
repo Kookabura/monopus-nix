@@ -7,6 +7,13 @@ else
   . /opt/monopus/common.sh
 fi
 
+debug=0 # 1 # Debugging interesting parts of code
+
+if [ "$debug" ]; then # CAVEAT: Test only
+  CFG_FN=./monopus.cfg.test
+  BASE=.
+fi
+
 ##### No config past this line #####
 
 ### Utility functions
@@ -47,12 +54,15 @@ EOF
 
 make_request() {
   log "Data: $1"
-  data="$1&api_key=$api_key"
-  res=$(curl -s -d "$data" $api_url)
-  #res=$(<resp1.txt)
-  #res=$(<resp2.txt)
+  if [ "$debug" ]; then
+    #res=$(curl -s -d "$data" $api_url)
+    res=$(<resp2.txt)
+  else
+    data="$1&api_key=$api_key"
+  fi
   log "Server response: $res"
-  parsed=$($BASE/json.sh -b <<< "$res")
+  parsed=$($BASE/json.sh -b <<< "$res") || return 1 # Wrong response
+
   #status=$(awk '$1=="[\"success\"]"{print $2}' <<< $parsed)
   get_all_vals <<< "$parsed"
 
@@ -61,7 +71,7 @@ make_request() {
     echo "Error: ${output_arr[message]}"
     exit 1
   fi
-  # Here we have variables in output_arr  
+  # Here we have variables in output_arr
 }
 
 ### Meaningful functions
@@ -72,7 +82,7 @@ initial_config() {
   addr=$(curl ipinfo.io/ip)
   memory=$(free --giga|awk '$1=="Mem:"{print $2}')
   #drives=$(df|awk '/^\//{arr=$1","arr}END{print arr}')
-  drives=$(df --exclude-type=tmpfs|awk 'NR>1{arr=$NF","arr}END{print arr}')
+  drives=$(df|awk 'NR>1{arr=$NF","arr}END{print arr}')
   hostname=`hostname`
   # Strip last comma from drives
   make_request "name=$hostname&address=$addr&os=`uname`&memory=$memory&mon_action=site/create&drives=${drives::-1}"
@@ -102,7 +112,7 @@ check_sub() {
   # if [ $retcode -eq 124 ]; then # Killed
   #   :
   # fi
-  
+
   # return $retcode
 }
 
@@ -155,7 +165,12 @@ get_new_checks=1 # Get the checks first time
 # Just a cycle so we don't quit while the background checks are running
 while true; do
   if [ "$get_new_checks" ]; then
-    make_request "mon_action=check/status&class=host&id=$host_id"
+    make_request "mon_action=check/status&class=host&id=$host_id" || {
+      # There was some error parsing response JSON
+      log "Error parsing response JSON for check/status"
+      sleep 10
+      continue
+    }
     make_checks_config # Copy them to the separate structure
 
     # Get ids of all checks
@@ -207,7 +222,7 @@ while true; do
       echo "$cid: Check not started"
       continue
     fi
-    
+
     echo "$cid: Waiting"
     wait ${checks[$cid,pid]}
     state=$?
@@ -216,7 +231,7 @@ while true; do
     log "$cid: State: $prev_state → $state"
     # read state output <<< $res
     output=$(</tmp/$cid.out) # Empty if there's no file
-    
+
     need_send=
     # [ $prev_state -eq 0 ] && need_send=1
     cur_time=$(date +%s)
@@ -240,7 +255,7 @@ while true; do
       next_ts=$((next_ts+$interval*60))
       checks[$cid,next_ts]=$next_ts
       log "$cid: next_ts=$next_ts"
-      
+
       log "$cid: Sending to server"
       make_request "id=$cid&mon_action=check/handle_result&result=$output&state=$state"
       if [ ${output_arr[data,active]} != true ]; then # Remove the check
@@ -257,7 +272,7 @@ while true; do
     [ "${!checks[*]}" ] || get_new_checks=1
   done
   #break
-  
+
   # next_ts=$(date +%s)
   # if [ $state -ne 0 ]; then
   #   log "$cid: state is not zero, checking every minute"
