@@ -9,7 +9,7 @@ fi
 
 debug=0 # 1 # Debugging interesting parts of code
 
-if [ "$debug" ]; then # CAVEAT: Test only
+if [ "$debug" == 1 ]; then # CAVEAT: Test only
   CFG_FN=./monopus.cfg.test
   BASE=.
 fi
@@ -54,11 +54,11 @@ EOF
 
 make_request() {
   log "Data: $1"
-  if [ "$debug" ]; then
-    #res=$(curl -s -d "$data" $api_url)
+  if [ "$debug" == 1 ]; then
     res=$(<resp2.txt)
   else
     data="$1&api_key=$api_key"
+    res=$(curl -s -d "$data" $api_url)
   fi
   log "Server response: $res"
   parsed=$($BASE/json.sh -b <<< "$res") || return 1 # Wrong response
