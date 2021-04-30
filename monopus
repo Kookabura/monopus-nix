@@ -82,7 +82,7 @@ initial_config() {
   addr=$(curl ipinfo.io/ip)
   memory=$(free --giga|awk '$1=="Mem:"{print $2}')
   #drives=$(df|awk '/^\//{arr=$1","arr}END{print arr}')
-  drives=$(df|awk 'NR>1{arr=$NF","arr}END{print arr}')
+  drives=$(df --exclude-type=tmpfs|awk 'NR>1{arr=$NF","arr}END{print arr}')
   hostname=`hostname`
   # Strip last comma from drives
   make_request "name=$hostname&address=$addr&os=`uname`&memory=$memory&mon_action=site/create&drives=${drives::-1}"
