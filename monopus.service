@@ -4,7 +4,16 @@ Description=Monopus client
 #After=beanstalkd.service
 #OnFailure=unit-status-mail@.service
 
+# Try restart 5 times before give up
+StartLimitIntervalSec=500
+StartLimitBurst=5
+
+
 [Service]
+# Restart service if it fails after 5 secs
+Restart=on-failure
+RestartSec=5s
+
 Type=simple
 User=root
 Group=root
