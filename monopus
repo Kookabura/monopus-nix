@@ -86,7 +86,7 @@ initial_config() {
   cores=$(getconf _NPROCESSORS_ONLN)
   hostname=`hostname`
   # Strip last comma from drives
-  make_request "name=$hostname&address=$addr&os=`uname`&memory=$memory&mon_action=site/create&drives=${drives::-1}&cores"
+  make_request "name=$hostname&address=$addr&os=`uname`&memory=$memory&mon_action=site/create&drives=${drives::-1}&cores=$cores"
 
   # Add id to a file
   set_param $CFG_FN host_id ${output_arr[data,id]}
