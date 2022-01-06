@@ -270,7 +270,7 @@ while true; do
     fi
     # В финале выполнения служба удаляет отключенные проверки из очереди. Если
     # очередь пустая, то запрашивает полный список проверок с сервера.
-    [ "${!checks[*]}" ] || get_new_checks=1
+    # [ "${!checks[*]}" ] || get_new_checks=1
   done
   #break
 
@@ -284,6 +284,10 @@ while true; do
   # checks[$cid,next_ts]=$next_ts
   # checks[$cid,state]=$state # Update previous code
 
+  # В финале выполнения служба удаляет отключенные проверки из очереди. Если
+  # очередь пустая, то запрашивает полный список проверок с сервера.
+  [ ! -z "${check_ids}" ] || get_new_checks=1
+  
   log "Sleeping until next round"
   sleep 60 # Can do something here
   #sleep 5
