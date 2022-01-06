@@ -61,7 +61,7 @@ make_request() {
     res=$(curl -s -d "$data" $api_url)
   fi
   log "Server response: $res"
-  parsed=$($BASE/json.sh -b <<< "$res") || return 1 # Wrong response
+  parsed=$($BASE/json.sh -b <<< "$res") # Wrong response
 
   #status=$(awk '$1=="[\"success\"]"{print $2}' <<< $parsed)
   get_all_vals <<< "$parsed"
@@ -166,12 +166,7 @@ get_new_checks=1 # Get the checks first time
 # Just a cycle so we don't quit while the background checks are running
 while true; do
   if [ "$get_new_checks" ]; then
-    make_request "mon_action=check/status&class=host&id=$host_id" || {
-      # There was some error parsing response JSON
-      log "Error parsing response JSON for check/status"
-      sleep 10
-      continue
-    }
+    make_request "mon_action=check/status&class=host&id=$host_id"
     make_checks_config # Copy them to the separate structure
 
     # Get ids of all checks
@@ -287,7 +282,7 @@ while true; do
   # В финале выполнения служба удаляет отключенные проверки из очереди. Если
   # очередь пустая, то запрашивает полный список проверок с сервера.
   [ ! -z "${check_ids}" ] || get_new_checks=1
-  
+
   log "Sleeping until next round"
   sleep 60 # Can do something here
   #sleep 5
