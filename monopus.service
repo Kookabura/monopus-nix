@@ -1,6 +1,7 @@
 # To be put to /etc/systemd/system/
 [Unit]
 Description=Monopus client
+After=network.target
 #After=beanstalkd.service
 #OnFailure=unit-status-mail@.service
 
