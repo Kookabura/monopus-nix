@@ -1,0 +1,38 @@
+#!/bin/bash
+
+if [ "$1" = "-w" ] && [ "$2" -gt "0" ] && [ "$3" = "-c" ] && [ "$4" -gt "0" ]; then
+
+    d=$(date +%s)
+    ((n = $d - 86400))
+    mas=$(pvesh get nodes| grep srv|awk '{print $2}')
+    for hyp in $mas
+    do
+        pvesh get nodes/$hyp/tasks | grep vzdump | awk -v nn=$n '{if ($2!="│" && $10>nn) print $0;}' > /root/back_err
+    done
+
+    tot_count=$(cat /root/back_err | grep UPID | wc | awk '{print $1}')
+    ok_count=$(cat /root/back_err | grep OK | wc | awk '{print $1}')
+    (( errors = tot_count - ok_count ))
+#    rm -f /root/back_err
+#errors=0
+#echo $errors
+    if [ "$errors" -ge "$4" ]; then
+        echo "back_stat_cri::total==$errors|total=$errors;;;;"
+        $(exit 2)
+    elif [ "$errors" -ge "$2" ]; then
+        echo "back_stat_war::total==$errors|total=$errors"
+        $(exit 1)
+    else
+        echo "back_stat_ok::total==0|total=$errors"
+        $(exit 0)
+    fi
+
+else
+        echo "check_proxmox_backup v1.1"
+        echo ""
+        echo "Usage:"
+        echo "check_proxmox_backup -w <warnlevel> -c <critlevel>"
+        echo ""
+        echo "warnlevel and critlevel is quantity value without %"
+        exit
+fi
