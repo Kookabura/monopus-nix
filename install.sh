@@ -3,6 +3,7 @@
 log_console=s
 verbose=1
 wait_time=360 # Default time to wait before running a newly added check
+KEEP_CFG="false"
 . ./common.sh
 
 usage ()
@@ -10,9 +11,10 @@ usage ()
   cat <<EOF >&2
  `basename $0`: Install monopus monitoring software
 sh ./`basename $0` [-hd] -k <api_key>
- 	-h 			- Print this message
- 	-d 			- Deinstall monopus monitor
+ 	-h 				- Print this message
+ 	-d 				- Deinstall monopus monitor
  	-k<api_key>		- API_KEY (get in your profile)
+	-u 				- Forced file update
 Examples:
 sh ./`basename $0` -kPtXwn4Stv3UdbmvEyEKHfvKEVdGyWN2Lh0iF4b8Ae2Oppj4YYO - Initialise subscription
 EOF
@@ -68,24 +70,12 @@ do_install()
   for i in $BASE/check_scripts $VAR; do test -d $i || mkdir -p $i; done
   cp common.sh json.sh monopus $BASE # send_nrdp.sh
   cp -r check_scripts/* $BASE/check_scripts
-  cp monopus.cfg $CFG_FN
+  chmod -R +x $BASE/check_scripts/
   
-  # if [ -f /etc/redhat-release ]; then
-  #   case $(cut -f1 -d' ' < /etc/redhat-release) in
-  #     CentOS)
-  # 	cp init.redhat /etc/init.d/monopus
-  # 	chkconfig --levels 234 monopus on
-  # 	service monopus start
-  # 	;;
-  #   esac
-  # elif [ -f /etc/debian_version ]; then # At least Ubuntu
-  #   cp init.debian /etc/init.d/monopus
-  #   update-rc.d monopus defaults
-  #   service monopus start
-  # else
-  #   : # Some other OS, not supported yet
-  # fi
-
+  if (!($KEEP_CFG)); then
+	cp monopus.cfg $CFG_FN
+  fi
+  
   cp monopus.service /etc/systemd/system/
   systemctl enable monopus
   systemctl start monopus
@@ -100,10 +90,11 @@ ver_lt()
   [ ${1%.*} -lt ${2%.*} ] || [ ${1%.*} -eq ${2%.*} -a ${1#*.} -lt ${2#*.} ]
 }
 
-while getopts "?di:k:" opt; do
+while getopts "?duk:" opt; do
   case $opt in
     k) CFG_API_KEY=$OPTARG;;
     d) do_deinstall;;
+    u) KEEP_CFG="true";;
     ?) usage;;
   esac
 done
@@ -122,6 +113,7 @@ if [ -f $CFG_FN ]; then
     log "You already have the latest version."
     exit 1
   fi
+  
   # Stop service for supported distribs
   # [ -f /etc/redhat-release -o -f /etc/debian_version ] && service monopus stop
   systemctl stop monopus
@@ -132,8 +124,6 @@ else
   #create_object
 fi
 
-do_install
-
+do_install $KEEP_CFG
 
 [ "$CFG_API_KEY" ] && set_param $CFG_FN api_key $CFG_API_KEY
-
