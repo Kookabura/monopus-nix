@@ -26,11 +26,11 @@ fi
 MSG=" Disk $DISK await time is $R ms | await=$R"
 
 if (( $(bc <<< "$R > $CRIT") )); then
-        echo "check_disk_io_critical::disk==${DISK}__await=${R} | await=$R;;;;"
+        echo "check_disk_io_critical::disk==${DISK}__await==${R} | await=$R;;;;"
         exit 2
 elif (( $(bc <<< "$R > $WARN") )); then
-        echo "check_disk_io_warning::disk==${DISK}__await=${R} | await=$R;;;;"
+        echo "check_disk_io_warning::disk==${DISK}__await==${R} | await=$R;;;;"
         exit 1
 fi
-echo "check_disk_io_ok::disk==${DISK}__await=${R} | await=$R;;;;"
+echo "check_disk_io_ok::disk==${DISK}__await==${R} | await=$R;;;;"
 exit 0
