@@ -1,0 +1,36 @@
+#!/bin/bash
+#
+# Felipe Ferreira 07/2016
+#
+# Local Disk await
+# await =  The average time (in milliseconds) for I/O requests issued to the device to be served. This includes the time spent by the requests in .
+
+# IMPORTANT: Requires iostat
+
+#Example
+#./check_io_disk.sh sdc 20.0 28.0
+# check_disk_io_ok::disk==sda__await=0.8 | await=0.8;;;;
+
+
+DISK=$1
+WARN=$2
+CRIT=$3
+
+R=$(iostat -d $DISK -xmt  2 4 |  awk '{ sum += $10; n++ } END { if (n > 0) print sum / n; }' |cut -c 1-3)
+
+if [ -z $R ]; then
+        echo "check_disk_io_unknown::disk==${DISK}"
+        exit 3
+fi
+
+MSG=" Disk $DISK await time is $R ms | await=$R"
+
+if (( $(bc <<< "$R > $CRIT") )); then
+        echo "check_disk_io_critical::disk==${DISK}__await=${R} | await=$R;;;;"
+        exit 2
+elif (( $(bc <<< "$R > $WARN") )); then
+        echo "check_disk_io_warning::disk==${DISK}__await=${R} | await=$R;;;;"
+        exit 1
+fi
+echo "check_disk_io_ok::disk==${DISK}__await=${R} | await=$R;;;;"
+exit 0
