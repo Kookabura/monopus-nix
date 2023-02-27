@@ -7,15 +7,15 @@ if [ "$1" = "-w" ] && [ "$2" -gt "0" ] && [ "$3" = "-c" ] && [ "$4" -gt "0" ]; t
         memTotal_b=`echo $mem_b |awk '{print $2}'`
         memFree_b=`echo $mem_b |awk '{print $4}'`
         memBuffer_b=`echo $mem_b |awk '{print $6}'`
-        memCache_b=`echo $mem_b |awk '{print $7}'`
+        memCache_b=`echo $mem_b |awk '{print $7}'` # available memory
 
         memTotal_m=`echo $mem_m |awk '{print $2}'`
         memFree_m=`echo $mem_m |awk '{print $4}'`
         memBuffer_m=`echo $mem_m |awk '{print $6}'`
-        memCache_m=`echo $mem_m |awk '{print $7}'`
+        memCache_m=`echo $mem_m |awk '{print $7}'` # available memory
 
-        memUsed_b=$(($memTotal_b-$memFree_b-$memBuffer_b-$memCache_b))
-        memUsed_m=$(($memTotal_m-$memFree_m-$memBuffer_m-$memCache_m))
+        memUsed_b=`echo $mem_b |awk '{print $3}'`
+        memUsed_m=`echo $mem_m |awk '{print $3}'`
 
         memUsedPrc=$((($memUsed_b*100)/$memTotal_b))
 
