@@ -11,17 +11,19 @@ SecondsBehindMaster=$((mysql -e "SHOW SLAVE STATUS\G" | grep -E 'Seconds_Behind_
 
 if [ "$SecondsBehindMaster" != " 0" ]  || [ "$SlaveSQLRunning" != " Yes" ] || [ "$SlaveIORunning" != " Yes" ]; then
 
- if ["$SecondsBehindMaster" != " 0"]; then
-  SBM=1
- fi
- if ["$SlaveSQLRunning" != " Yes"]; then
-  SlaveSQL=1
- fi
- if ["$SlaveIORunning" != " Yes"]; then
-  SlaveIO=1
- fi
+	if [ "$SecondsBehindMaster" != " 0" ]; then
+		SBM=1
+	fi
+	
+	if [ "$SlaveSQLRunning" != " Yes" ]; then
+		SlaveSQL=1
+	fi
+	
+	if [ "$SlaveIORunning" != " Yes" ]; then
+		SlaveIO=1
+	fi
 
- state=2
+	state=2
 fi
 
 output="check_mysql_replication::${states_text[$state]} | SBM=$SBM;;;; SlaveSQL=$SlaveSQL;;;; SlaveIO=$SlaveIO;;;;"
