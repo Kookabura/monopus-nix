@@ -3,7 +3,7 @@
 # Felipe Ferreira 07/2016
 #
 # Local Disk await
-# await =  The average time (in milliseconds) for I/O requests issued to the device to be served. This includes the time spent by the requests in .
+# await =  The average time (in milliseconds) for I/O requests issued to the device to be served. This includes the time spent by the requests in  queue  and the time spent servicing them.
 
 # IMPORTANT: Requires iostat
 
