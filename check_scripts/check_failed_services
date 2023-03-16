@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SERVICES=$1
+SERVICES=${*}
 state=3
 failed=""
 states_text=("ok" "warning" "critical" "unknown")
