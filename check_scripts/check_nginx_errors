@@ -17,34 +17,50 @@ while getopts ":p:" opt; do
   esac
 done
 
-# Set default period value
-if [ -z "$period" ]; then period=300; fi
+if test -f "$FILE" && test -s "$FILE";then
+ d1=$(stat -c '%y' "$FILE")
+ d=`date +%s -d d1`
+ diff=$(( (`date +%s` - d) / 3600 ))
 
-gawk -vtext_code=ok -vperiod=$period '
+ if [ $diff -lt 48 ];then
+
+ # Set default period value
+ if [ -z "$period" ]; then period=300;
+ fi
+
+  gawk -vtext_code=ok -vperiod=$period '
   BEGIN{
-    m["Jan"]=1;m["Feb"]=2;m["Mar"]=3;m["Apr"]=4;  m["May"]=5;  m["Jun"]=6
-    m["Jul"]=7;m["Aug"]=8;m["Sep"]=9;m["Oct"]=10; m["Nov"]=11; m["Dec"]=12
-    code=0
-    i=0
-    y=0
-    s=systime()
+   m["Jan"]=1;m["Feb"]=2;m["Mar"]=3;m["Apr"]=4;  m["May"]=5;  m["Jun"]=6
+   m["Jul"]=7;m["Aug"]=8;m["Sep"]=9;m["Oct"]=10; m["Nov"]=11; m["Dec"]=12
+   code=0
+   i=0
+   y=0
+   s=systime()
   }
-  /\" (504|502) /{
-    sub(/\[/,"",$4)
-    split($4,d,"/")
-    split(d[3],t,":")
-    ds=sprintf("%d %d %d %d %d %d",t[1],m[d[2]],d[1],t[2],t[3],t[4])
-    ts=mktime(ds)
-    if ( s-ts < period ) {
-	if ($11 == 502) i++
-	if ($11 == 504) y++
-    }
+  / upstream_status=(504|502) /{
+   sub(/\[/,"",$4)
+   split($4,d,"/")
+   split(d[3],t,":")
+   ds=sprintf("%d %d %d %d %d %d",t[1],m[d[2]],d[1],t[2],t[3],t[4])
+   ts=mktime(ds)
+   if ( s-ts < period ) {
+    if ($10 == "status=502") i++
+    if ($10 == "status=504") y++
+   }
   }
   END{
-    if (i > 0 || y > 0) {
-	code=2
-	text_code="crit"
-    }
-    printf "check_nginx_errors.%s::error_504==%s__error_502==%s | error_504=%s;;;; error_502=%s;;;;\n",text_code,y,i,y,i
-    exit code
+   if (i > 0 || y > 0) {
+    code=2
+    text_code="crit"
+   }
+   printf "check_nginx_errors.%s::error_504==%s__error_502==%s | error_504=%s;;;; error_502=%s;;;;\n",text_code,y,i,y,i
+   exit code
   }' "$FILE"
+ else
+  printf "check_nginx_errors.crit::error_504==0__error_502==0 | error_504=0;;;; error_502=0;;;;"
+  exit 2
+ fi
+else
+ printf "check_nginx_errors.crit::error_504==0__error_502==0 | error_504=0;;;; error_502=0;;;;"
+ exit 2
+fi
