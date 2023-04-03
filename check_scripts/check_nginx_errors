@@ -22,7 +22,7 @@ if test -f "$FILE" && test -s "$FILE";then
  d=`date +%s -d d1`
  diff=$(( (`date +%s` - d) / 3600 ))
 
- if [ $diff -lt 48 ];then
+ if [ $diff -lt 24 ];then
 
  # Set default period value
  if [ -z "$period" ]; then period=300;
