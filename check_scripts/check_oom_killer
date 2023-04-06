@@ -1,0 +1,127 @@
+#!/bin/bash
+#
+#    Copyright (C) 2012 Rodolphe Quiédeville <rq@quiedeville.org>
+#    Copyright (C) 2012 Loic Dachary <loic@dachary.org>
+#
+#    This program is free software: you can redistribute it and/or modify
+#    it under the terms of the GNU Affero General Public License as published by
+#    the Free Software Foundation, either version 3 of the License, or
+#    (at your option) any later version.
+#
+#    This program is distributed in the hope that it will be useful,
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#    GNU Affero General Public License for more details.
+#
+#    You should have received a copy of the GNU Affero General Public License
+#    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#
+set -e
+: ${LOGS:=/var/log/messages}
+: ${TMPFILE:=$(mktemp)}
+: ${LOGFILE:=/tmp/nagios_oom_killer}
+: ${TIMEFILE:=/tmp/tms_oom_killer}
+
+function run() {
+    local from
+    local till
+
+    local log_file=${1:-/var/log/messages}
+
+    grep -h 'Out of memory' $log_file > $TMPFILE || true
+
+    #if [ -f $TIMEFILE ]; then
+    #    from=$(stat -c %Z $TIMEFILE)
+    #else
+        from=$(date -d '30 min ago'  +%s)
+    #fi
+
+    till=$(date +%s)
+
+    local out='check_oom_killer.ok::mins==30 || count=0'
+    local line
+    local code=0
+
+    while read line ; do
+        local date=$(date -d "$(echo $line | awk '{print $1, $2, $3}')" +%s)
+
+        if [[ $date -gt $from && $date -lt $till ]]; then
+            echo $line >> $LOGFILE
+     	    touch $TIMEFILE
+        fi
+    done < $TMPFILE
+
+    rm -f $TMPFILE
+
+    if [ -f $LOGFILE ]; then
+        #echo cat $LOGFILE
+        out="check_oom_killer.critical::mins=30 || count=$(cat $LOGFILE | wc -l)"
+        code=2
+    fi
+
+    rm -f $LOGFILE
+
+    echo $out
+    return $code
+}
+
+if [ "$1" = TEST ] ; then
+    set -x
+    set -o functrace
+    PS4=' ${FUNCNAME[0]}: $LINENO: '
+
+    LOGS=$(mktemp)
+    LOGFILE=$(mktemp --dry-run)
+    TIMEFILE=$(mktemp --dry-run)
+
+    function test_run() {
+        out="$(run)"
+        if [ -z "$out" ] || ! expr "$out" : '^OK'  ; then
+            echo 'expected successfull run indicating that no out of memory is detected'
+            return 1
+        fi
+
+        echo 'Dec 10 18:19:01 pavot kernel: [291484.458704] Out of memory: kill process dovecot(5657:#17) score 46580 or a child' > $LOGS
+
+        if run ; then
+            echo 'expected exit code 2 : indicating that an out of memory is detected'
+            return 2
+        fi
+
+        sleep 1
+
+        rm $LOGFILE
+
+        out="$(run)"
+        if [ -z "$out" ] || ! expr "$out" : '^OK'  ; then
+            echo 'expected successfull run indicating that out of memory has been fixed'
+            return 3
+        fi
+    }
+
+    test_run
+
+    rm -f $LOGS $LOGFILE $TIMEFILE
+
+elif [ "$1" = "-h" -o "$1" = "--help" ] ; then
+    cat <<EOF
+Usage: check_oom_killer [--help] [-h]
+
+Look for the 'Out of memory' string in the /var/log/kern.log file. Its
+presence indicates the OOM Killer was activated.  For more
+information: http://en.wikipedia.org/wiki/Out_of_memory
+
+When an 'Out of memory' is found, the line is stored permanently in
+the file $LOGFILE. The file must be removed manually when the problem
+is fixed so that check_oom_killer returns OK again.
+
+EOF
+else
+    run "$@"
+fi
+
+# Interpreted by emacs
+# Local Variables:
+# compile-command: "bash check_oom_killer TEST"
+# End:
+
