@@ -231,14 +231,13 @@ get_vals() {
 }
 
 do_output() {
-    output="Apache serves $req_psec Requests per second with an average CPU \
-utilization of $cpu_load%. Busy workers: $wkrs_busy, idle: $wkrs_idle"
+    output="req_psec==${req_psec}__cpu_load==${cpu_load}__wkrs_busy==${wkrs_busy}__wkrs_idle==${wkrs_idle}"
 }
 
 do_perfdata() {
-    perfdata="'cpu_load'=$cpu_load 'req_psec'=$req_psec \
-'bytes_psec'=$bytes_psec 'bytes_preq'=$bytes_preq 'workers_busy'=$wkrs_busy \
-'workers_idle'=$wkrs_idle"
+    perfdata="cpu_load=${cpu_load};;;; req_psec=${req_psec};;;; \
+bytes_psec=${bytes_psec};;;; bytes_preq=${bytes_preq};;;; workers_busy=${wkrs_busy};;;; \
+workers_idle=${wkrs_idle};;;;"
 }
 
 # Let's go
@@ -276,18 +275,18 @@ else
     then
         if [ ${req_psec} -ge ${warn_req} -a ${req_psec} -lt ${crit_req} ]
         then
-            echo "WARNING - ${output} | ${perfdata}"
+            echo "check_apache2.warning::${output}|${perfdata}"
             exit $ST_WR
         elif [ ${req_psec} -ge ${crit_req} ]
         then
-            echo "CRITICAL - ${output} | ${perfdata}"
+            echo "check_apache2.critical::${output}|${perfdata}"
         exit $ST_CR
         else
-            echo "OK - ${output} | ${perfdata}"
+            echo "check_apache2.ok::${output}|${perfdata}"
             exit $ST_OK
         fi
     else
-        echo "OK - ${output} | ${perfdata}"
+        echo "check_apache2.ok::${output}|${perfdata}"
         exit $ST_OK
     fi
 
