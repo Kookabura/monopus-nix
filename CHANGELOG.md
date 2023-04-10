@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - check_scripts/check_apache2. Changed output.
+
+### Removed
+
+- Removed old check check_scripts/check_apache
  
 ## [1.0.3] - 2023-04-06
  
