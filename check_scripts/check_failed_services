@@ -9,6 +9,11 @@ if [ -f /bin/systemctl ]; then
 
 	failed=$(/bin/systemctl --failed --no-legend)
 	failed=${failed/ */}  # Strip everything after first space
+
+	if [ "$failed" == "●" ]; then
+		failed=$(/bin/systemctl --failed --no-legend | sed '/^[[:space:]]*$/d' | awk '{print $2}')
+	fi
+
 	failed=${failed/.service/} # Strip .service suffix
 	
 	if [ "$failed" != "" ]; then
