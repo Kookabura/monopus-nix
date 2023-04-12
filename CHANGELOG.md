@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - check_scripts/check_apache2. Changed output.
+- check_scripts/check_failed_services. Changed arguments.
 
 ### Removed
 
