@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - check_scripts/check_apache2. Changed output.
 - check_scripts/check_failed_services. Changed arguments.
+- check_scripts/check_oom_killer. Added log file existance condition.
 
 ### Removed
 
