@@ -6,11 +6,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [1.0.4]
+
 ### Changed
 
 - check_scripts/check_apache2. Changed output.
 - check_scripts/check_failed_services. Changed arguments.
 - check_scripts/check_oom_killer. Added log file existance condition.
+
+### Fixed
+
+- check_scripts/check_failed_services. Fixed service name parsing.
 
 ### Removed
 
