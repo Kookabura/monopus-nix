@@ -28,6 +28,11 @@ function run() {
 
     local log_file=${1:-/var/log/messages}
 
+    if [ ! -f $log_file ]; then
+        echo "check_oom_killer.path_error::path==$log_file"
+        return 2
+    fi
+
     grep -h 'Out of memory' $log_file > $TMPFILE || true
 
     #if [ -f $TIMEFILE ]; then

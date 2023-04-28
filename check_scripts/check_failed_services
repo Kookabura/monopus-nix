@@ -1,36 +1,75 @@
 #!/bin/bash
 
-SERVICES=${*}
 state=3
 failed=""
 states_text=("ok" "warning" "critical" "unknown")
 
+# process command line args
+while [ ! -z "$1" ]; do
+        case $1 in
+                -services)  shift; SERVICES_STR="$1";;
+                -excluded)  shift; EXCLUDED_STR="$1";;
+        esac
+        shift
+done
+
+IFS=',' read -ra SERVICES <<< "$SERVICES_STR"
+IFS=',' read -ra EXCLUDED <<< "$EXCLUDED_STR"
+
 if [ -f /bin/systemctl ]; then
 
-	failed=$(/bin/systemctl --failed --no-legend)
-	failed=${failed/ */}  # Strip everything after first space
-	failed=${failed/.service/} # Strip .service suffix
-	
-	if [ "$failed" != "" ]; then
+        failed=$(/bin/systemctl --failed --no-legend)
+        failed=${failed/ */}  # Strip everything after first space
+        failed=${failed/.service/} # Strip .service suffix
 
-		state=1
-		
-		if [ "$SERVICES" != "" ]; then
-		
-			for SERVICE in $SERVICES
-			do
-				
-				if [ ${failed[@]} == "${SERVICE}" ]; then
-					state=2
-				fi
-				
-			done
-		
-		fi
-	
-	else
-		state=0
-	fi
+        if [ "$failed" != "" ]; then
+
+                # process excluded services
+                if [ "$EXCLUDED" != "" ]; then
+
+                        state=0
+
+                        for svc in $failed
+                        do
+                                excluded=0
+
+                                for ex_svc in ${EXCLUDED[@]}								
+                                do
+                                        if [ $svc == $ex_svc ]; then
+                                                excluded=1
+                                                break 
+                                        fi
+                                done
+
+                                if [ $excluded == 0 ]; then
+                                        state=1
+                                        break
+                                fi
+
+                        done
+
+                else
+                        state=1
+                fi
+
+
+                # process important services
+                if [ "$SERVICES" != "" ]; then
+
+                        for SERVICE in ${SERVICES[@]}
+                        do
+
+                                if [ ${failed[@]} == "${SERVICE}" ]; then
+                                        state=2
+                                fi
+
+                        done
+
+                fi
+
+        else
+                state=0
+        fi
 fi
 
 echo "check_failed_services.${states_text[$state]}::services==$failed | services=${#failed[@]};;;"
