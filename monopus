@@ -62,6 +62,7 @@ make_request() {
   fi
   log "Server response: $res"
   parsed=$($BASE/json.sh -b <<< "$res") # Wrong response
+  parsed=$(echo -en "$parsed")
 
   #status=$(awk '$1=="[\"success\"]"{print $2}' <<< $parsed)
   get_all_vals <<< "$parsed"
