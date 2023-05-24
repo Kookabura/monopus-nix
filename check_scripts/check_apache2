@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 #   This program is free software; you can redistribute it and/or modify
 #   it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 #   along with this program; if not, write to the Free Software
 #   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-PROGNAME=`basename $0`
+PROGNAME=$(basename "$0")
 VERSION="Version 1.3,"
 AUTHOR="2009, Mike Adolphs (http://www.matejunkie.com/)"
 
@@ -23,7 +23,7 @@ print_version() {
 }
 
 print_help() {
-    print_version $PROGNAME $VERSION
+    print_version "$PROGNAME $VERSION"
     echo ""
     echo "Description:"
     echo "$PROGNAME is a Nagios plugin to check the Apache's server status."
@@ -79,19 +79,19 @@ status_page="server-status"
 timeout=3
 secure=0
 running=0
+process="httpd"
 
 wcdiff_req=0
 wclvls_req=0
 
-while test -n "$1"; do
+while [ -n "$1" ]; do
     case "$1" in
         --help|-h)
             print_help
-            exit $ST_UK
             ;;
         --version|-v)
-            print_version $PROGNAME $VERSION
-            exit $ST_UK
+            print_version "$PROGNAME $VERSION"
+            exit "$ST_UK"
             ;;
         --hostname|-H)
             hostname=$2
@@ -138,7 +138,6 @@ while test -n "$1"; do
         *)
             echo "Unknown argument: $1"
             print_help
-            exit $ST_UK
             ;;
     esac
     shift
@@ -146,18 +145,17 @@ done
 
 # check functions
 val_wcdiff_req() {
-    if [ ! -z "$warn_req" -a ! -z "$crit_req" ]
+    if [ -n "$warn_req" ] && [ -n "$crit_req" ]
     then
         wclvls_req=1
-
-        if [ ${warn_req} -gt ${crit_req} ]
+        if [ "$warn_req" -gt "$crit_req" ]
         then
             wcdiff_req=1
         fi
-    elif [ ! -z "$warn_req" -a -z "$crit_req" ]
+    elif [ -n "$warn_req" ] && [ -z "$crit_req" ]
     then
         wcdiff_req=2
-    elif [ -z "$warn_req" -a ! -z "$crit_req" ]
+    elif [ -z "$warn_req" ] && [ -n "$crit_req" ]
     then
         wcdiff_req=3
     fi
@@ -183,7 +181,7 @@ $path_binary?"
 }
 
 check_output() {
-    stat_output=`stat -c %s ${output_dir}/server-status`
+    stat_output=$(stat -c %s ${output_dir}/server-status)
     if [ "$stat_output" = 0 ]
     then
         echo "UNKNOWN - Local copy of server-status is empty. Are we \
@@ -192,42 +190,70 @@ allowed to access http://${hostname}:${port}/server-status?"
     fi
 }
 
-# get functions
+# get status page server and save her in /tmp/server_status
 get_status() {
-    if [ "$secure" = 1 ]
+    if [ "$secure" = 1 ]                            # if https
     then
-        server_status1=`wget -qO- --no-check-certificate -t 3 \
--T ${timeout} https://${hostname}:${port}/${status_page}?auto`
-    sleep 1
-        server_status2=`wget -qO- --no-check-certificate -t 3 \
--T ${timeout} https://${hostname}:${port}/${status_page}?auto`
-    else
-        server_status1=`wget -qO- -t 3 -T ${timeout} \
-http://${hostname}:${port}/${status_page}?auto`
-        sleep 1
-        server_status2=`wget -qO- -t 3 -T ${timeout} \
-http://${hostname}:${port}/${status_page}?auto`
+        if [ -e /tmp/server_status ];
+        then
+            status_prev=$(cat /tmp/server_status)
+        else
+            status_prev=""
+        fi
+        status_cur=$(wget -qO- --no-check-certificate -t 3 -T "${timeout}" "https://${hostname}:${port}/${status_page}?auto")
+    else                                            # if http
+        if [ -e /tmp/server_status ];
+        then
+            status_prev=$(cat /tmp/server_status)
+        else
+            status_prev=""
+        fi
+        status_cur=$(wget -qO- -t 3 -T "${timeout}" "http://${hostname}:${port}/${status_page}?auto")
     fi
+    echo "$status_cur" > /tmp/server_status         # save web statistic apache in temp file
 }
-
+# collection of web server statistics
 get_vals() {
-    cpu_load="$(cpu_load=0; ps -Ao pcpu,args | grep "$path_binary/apache2" \
-| awk '{print $1}' | while read line
-    do
-        cpu_load=`echo "scale=3; $cpu_load + $line" | bc -l`
-    echo $cpu_load
-    done)"
-    cpu_load=`echo $cpu_load | awk '{print $NF}' | sed 's/^\./0./'`
-
-    tmp1_req_psec=`echo ${server_status1} | awk '{print $3}'`
-    tmp2_req_psec=`echo ${server_status2} | awk '{print $3}'`
-    req_psec=`echo "scale=2; ${tmp2_req_psec} - ${tmp1_req_psec}" | bc -l \
-| sed 's/^\./0./'`
-
-    bytes_psec=`echo ${server_status1} | awk '{print $14}' | sed 's/^\./0./'`
-    bytes_preq=`echo ${server_status1} | awk '{print $16}' | sed 's/^\./0./'`
-    wkrs_busy=`echo ${server_status1} | awk '{print $18}' | sed 's/^\./0./'`
-    wkrs_idle=`echo ${server_status1} | awk '{print $20}' | sed 's/^\./0./'`
+    # save cpu statistic for pidstat in tmp 
+    sh /opt/monopus/check_scripts/pidstat.sh $process &
+    # cpu load calculaite through pidstat in packet sysstat
+    cpu_load=0
+	if [ -s /tmp/${process}_2min_stat.txt ] # if file exist and not empty
+    then
+        stat="$(cat /tmp/${process}_2min_stat.txt)"
+        cpu_load=$(echo "$stat" | awk '{print $8}' | tr "[:space:]" '+')
+        cpu_load=$(echo "$cpu_load" | sed 's/.$//' | bc -l | awk '{printf "%.1f", $0}')
+    fi
+    if [ -s /tmp/server_status ]            # if file exist and not empty
+    then 
+        # requests per second
+        taccess1=$(echo "${status_prev}" | head -n1 | awk '{print $3}')
+        taccess2=$(echo "${status_cur}" | head -n1 | awk '{print $3}')
+        uptime1=$(echo "${status_prev}" | head -n4 | tail -n1 | awk '{print $2}')
+        uptime2=$(echo "${status_cur}" | head -n4 | tail -n1 | awk '{print $2}')
+        ((req = taccess2 - taccess1))
+        ((uptime = uptime2 - uptime1))
+        req_psec=$(echo "scale=2; (${req}) / (${uptime})" | bc -l | awk '{printf "%.2f", $0}')
+        # bytes per second
+        kb1=$(echo "${status_prev}" | head -n2 | tail -n1 | awk '{print $3}')
+        kb2=$(echo "${status_cur}" | head -n2 | tail -n1 | awk '{print $3}')
+        ((kb = kb2 - kb1))
+        #kb_psec=$(echo "scale=2; ${kb} / ${uptime}" | bc -l | awk '{printf "%.2f", $0}')
+        bytes_psec=$(echo "scale=2; (${kb} / ${uptime}) * 1024" | bc -l | awk '{printf "%d", $0}')
+        # bytes per request
+        #kb_preq=$(echo "${kb} / ${req}" | bc -l | awk '{printf "%.2f", $0}')
+        bytes_preq=$(echo "(${kb} / ${req}) * 1024" | bc -l | awk '{printf "%d", $0}')
+        # busy workers
+        wkrs_busy=$(echo "${status_cur}" | head -n8 | tail -n1 | awk '{print $2}')
+        # idle workers
+        wkrs_idle=$(echo "${status_cur}" | head -n9 | tail -n1 | awk '{print $2}')
+    else                                # if /tmp/server_status not exist - return empty metrics
+        req_psec=0
+        bytes_psec=0
+        bytes_preq=0
+        wkrs_busy=0
+        wkrs_idle=0
+    fi
 }
 
 do_output() {
@@ -240,7 +266,7 @@ bytes_psec=${bytes_psec};;;; bytes_preq=${bytes_preq};;;; workers_busy=${wkrs_bu
 workers_idle=${wkrs_idle};;;;"
 }
 
-# Let's go
+# Check value warnings/criticals thresholds
 val_wcdiff_req
 
 if [ "$wcdiff_req" = 1 ]
@@ -261,8 +287,16 @@ warning/critical thresholds!"
 else
     if [ "$remote_srv" = 0 ]
     then
-        running=`check_pid`
-        check_pid $running
+        running=$(check_pid)
+        check_pid "$running"
+    fi
+    # check exists process "httpd" or "apache2" in system
+    if [ "$(pgrep -c "httpd")" -gt 0 ]
+    then
+        process="httpd"
+    elif [ "$(pgrep -c "apache2")" -gt 0 ]
+    then
+        process="apache2"
     fi
 
     get_status
@@ -273,11 +307,11 @@ else
 
     if [ ${wclvls_req} = 1 ]
     then
-        if [ ${req_psec} -ge ${warn_req} -a ${req_psec} -lt ${crit_req} ]
+        if [ "${req_psec}" -ge "${warn_req}" ] && [ "${req_psec}" -lt "${crit_req}" ]
         then
             echo "check_apache2.warning::${output}|${perfdata}"
             exit $ST_WR
-        elif [ ${req_psec} -ge ${crit_req} ]
+        elif [ "${req_psec}" -ge "${crit_req}" ]
         then
             echo "check_apache2.critical::${output}|${perfdata}"
         exit $ST_CR
@@ -291,4 +325,3 @@ else
     fi
 
 fi
-
