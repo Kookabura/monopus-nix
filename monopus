@@ -1,180 +1,226 @@
 #!/bin/bash
-# pooh@aikipooh.name
 
-if [ `hostname` = dell ]; then
-  . common.sh
-else
-  . /opt/monopus/common.sh
-fi
-
-debug=0 # 1 # Debugging interesting parts of code
-
-if [ "$debug" == 1 ]; then # CAVEAT: Test only
-  CFG_FN=./monopus.cfg.test
-  BASE=.
-fi
-
-##### No config past this line #####
-
-### Utility functions
-
-# For the JSON parsing
-#declare -A output_arr
+. /opt/monopus/common.sh
 
 log() {
-  [ "$verbose" ] && echo "$(date +%H:%M:%S) $*"
+  if [ -n "$verbose" ]; then
+    printf "$(date +%H:%M:%S) %s %s\n" "$1" "$2"
+  fi
+}
+
+print_version() {
+  echo "Monopus version is $VERSION"
+  exit 0
 }
 
 # Gets all values from parsed JSON (passed on stdin). Uses external output_arr
 get_all_vals() {
-  unset output_arr
-  declare -gA output_arr
-  awkout=$(awk -F '\t' '{gsub("\"", "", $1); print $1; gsub("\"", "", $2); print $2}')
-
-  while read line; do
-    if [ "$varname" ]; then
+  unset output_arr            # delete array
+  declare -gA output_arr      # declare read-only associative array
+  out=$(awk -F '\t' '{print $1; print $2}' | tr -d '\"\\') #remove char " and \ and split line two value
+  while read -r line; do      
+    if [ "$varname" ]; then   # if value not contains []
       log "  Setting $varname to $line"
-      output_arr[$varname]="$line"
-      varname=
+      output_arr[$varname]="$line" # fills the output array with data
+      varname=                # clear value
     else
-      varname="${line:1:-1}"
+      varname="${line:1:-1}"  # remove from value []
     fi
-  done <<< "$awkout"
+  done <<< "$out"             # read all lines in loop one word at a time from parsed JSON
 }
 
-usage() {
-  cat <<EOF >&2
- `basename $0`: monopus service
-./`basename $0` [-h] -v
- 	-h 		- print this message
- 	-v		- Verbose
-EOF
+# Print help for Monopus
+print_help() {
+  echo "Monopus client service"
+  echo "monopus [-h] [-u] [-v] [-w]"
+  echo "  --help,    -h        - Print this message"
+  echo "  --version, -v        - Print version monopus"
+  echo "  --verbose, -w        - Verbose message in console"
+  echo "  --update,  -u <link> - Update monopus, default from: https://github.com/Kookabura/monopus-nix/archive/refs/heads/main.zip"
   exit 0
 }
 
+# Make request to server
 make_request() {
   log "Data: $1"
-  if [ "$debug" == 1 ]; then
-    res=$(<resp2.txt)
-  else
-    data="$1&api_key=$api_key"
-    res=$(curl -s -d "$data" $api_url)
-  fi
+  res=$(curl -s -d "$1&api_key=$api_key" $api_url)  # make request to server and save response
   log "Server response: $res"
-  parsed=$($BASE/json.sh -b <<< "$res") # Wrong response
-  parsed=$(echo -en "$parsed")
-
-  #status=$(awk '$1=="[\"success\"]"{print $2}' <<< $parsed)
-  get_all_vals <<< "$parsed"
-
-  status=${output_arr[success]}
+  parsed=$("${BASE}"/json.sh -b <<< "$res")         # translate response to key:value stings
+  parsed=$(echo -en "$parsed")                      # print \ and remove newline chars
+  get_all_vals <<< "$parsed"                        # fill output_arr values from parsed response
+  status=${output_arr[success]}                     # if status response from server fail
   if [ "$status" = false ]; then
     log "Error: ${output_arr[message]}"
     #exit 1
   fi
-  # Here we have variables in output_arr
 }
-
-### Meaningful functions
 
 # Creates site config on the endpoint
 initial_config() {
-  log "Getting our IP"
-  addr=$(curl ipinfo.io/ip)
-  memory=$(free --giga|awk '$1=="Mem:"{print $2}')
-  #drives=$(df|awk '/^\//{arr=$1","arr}END{print arr}')
+  addr=$(curl -s ipinfo.io/ip)                      # host ip
+  log "Getting our IP: $addr"
+  memory=$(free --giga | awk '$1=="Mem:"{print $2}')
   drives=$(df --exclude-type=tmpfs --exclude-type=squashfs --exclude-type=devtmpfs --exclude-type=overlay|awk 'NR>1{arr=$NF","arr}END{print arr}')
   cores=$(getconf _NPROCESSORS_ONLN)
-  hostname=`hostname`
+  hostname=$(hostname)
   # Strip last comma from drives
-  make_request "name=$hostname&address=$addr&os=`uname`&memory=$memory&mon_action=site/create&drives=${drives::-1}&cores=$cores"
-
-  # Add id to a file
-  set_param $CFG_FN host_id ${output_arr[data,id]}
+  make_request "name=$hostname&address=$addr&os=$(uname)&memory=$memory&mon_action=site/create&drives=${drives::-1}&cores=$cores"
+  set_param "$CFG_FN" host_id "${output_arr[data,id]}" # Add id to a file
 }
 
 # Check subroutine for $1 cid, uses output_arr with config
 check_sub() {
   script=$scripts_path/${checks_config[$1,command]}
-  if [ ! -f $script -o ! -x $script ]; then
-    :> /tmp/$1.out
-    return 3 # Command not found or not executable
+  if [ ! -f "$script" ] || [ ! -x "$script" ]; then   # if script check not exist then output void in temp file
+    :> /tmp/"${1}".out
+    return 3                                          # Command not found or not executable
   fi
-
   args=${checks_config[$1,args]}
   # Значения параметров w и c приходят в отдельных значения warning и critical.
   for p in critical warning; do
     val=${checks_config[$1,$p]}
     [ "$val" ] && args="-${p::1} $val $args"
   done
-
-  rm -f /tmp/$1.out
-  timeout $timeout $script $args > /tmp/$1.out # 124 will mean killed
-  # retcode=$?
-  # if [ $retcode -eq 124 ]; then # Killed
-  #   :
-  # fi
-
-  # return $retcode
+  rm -f /tmp/"${1}".out                               # delete temp file
+  timeout "$timeout" "$script" $args > /tmp/"${1}".out # output check into temp file
 }
 
 # From output_arr
 make_checks_config() {
   unset checks_config
   declare -Ag checks_config
-  for k in ${!output_arr[@]}; do
-    [ "${k::14}" = "data,services," ] || continue # Skip other variables
-    checks_config[${k:14}]=${output_arr[$k]}
+  for k in "${!output_arr[@]}"; do
+    if [ "${k::14}" = "data,services," ];then   # if contain "data,services" 
+      checks_config[${k:14}]=${output_arr[$k]}  # 
+    else
+      continue                                  # Skip other variables
+    fi
   done
-  #echo "${!checks_data[@]}"
 }
+
 # Run on shell exit, kill all check subroutines
 do_exit() {
   echo "In do_exit()"
   kill ${pids[@]}
 }
 
-while getopts "?v" opt; do
-    case $opt in
-        v) verbose=1;;
-        ?|h) usage;;
-    esac
+# Update monopus
+do_update() {
+  if [ -z "$UpdateLink" ]; then
+    UpdateLink="https://github.com/Kookabura/monopus-nix/archive/refs/heads/main.zip"
+    echo "Use default link to update: $UpdateLink"
+  fi
+  if [ "$(id -u)" -ne 0 ]; then
+    echo -e "\n\nNeed root privileges to update monopus!!! Exit";
+    exit 1;
+  fi
+  check_curl
+  echo "Getting config and save..."
+  parsed=$("${BASE}"/json.sh -b < "$CFG_FN")
+  get_all_vals <<< "$parsed"
+  api_key=${output_arr[api_key]}
+  uri=${output_arr[uri]}
+  scripts_path=${output_arr[scripts_path]}
+  host_id=${output_arr[host_id]}
+  timeout=${output_arr[timeout]}
+  echo "Starting update monopus..."
+  if wget -c -q -O update.zip "$UpdateLink";then
+    echo "Download monopus from link: success"
+  else
+    echo "Download monopus from link: fail!  exit..."
+    exit 1
+  fi
+  echo "Unpack files"
+  unzip -tq update.zip && unzip -oq update.zip || exit 1
+  echo "Adding execute permissions to files"
+  if chmod +x -R ./monopus-nix-*;then
+    echo "All right installed successful"
+  else
+    echo "Fail set execution rights... exit"
+    exit 1
+  fi
+  echo "Stoping monopus daemon"
+  systemctl stop monopus
+  sleep 5
+  echo "Delete old check and action scripts"
+  rm -rf /opt/monopus/action_scripts /opt/monopus/check_scripts
+  echo "Copy config and service files into /etc dirs and set right for him 644"
+  cp ./monopus-nix-*/monopus.service /etc/systemd/system
+  cp ./monopus-nix-*/monopus.cfg /etc
+  chmod 644 /etc/systemd/system/monopus.service
+  chmod 644 /etc/monopus.cfg
+  echo "Copy monopus execution files..."
+  cp -rT ./monopus-nix-*/action_scripts /opt/monopus/action_scripts
+  cp -rT ./monopus-nix-*/check_scripts /opt/monopus/check_scripts
+  cp -r ./monopus-nix-*/json.sh /opt/monopus
+  cp -r ./monopus-nix-*/common.sh /opt/monopus
+  cp -r ./monopus-nix-*/monopus /opt/monopus
+  echo "Put config setting back"
+  set_param "$CFG_FN" api_key ${output_arr[api_key]}
+  set_param "$CFG_FN" uri ${output_arr[uri]}
+  set_param "$CFG_FN" scripts_path ${output_arr[scripts_path]}
+  set_param "$CFG_FN" host_id ${output_arr[host_id]}
+  echo "Cleaning up the installation distribution"
+  rm -rf ./monopus-nix-* ./update.zip
+  echo "Starting monopus daemon"
+  systemctl daemon-reload
+  systemctl start monopus
+  echo "****************************************"
+  echo "*  Update is done. Congratilations!!!  *"
+  echo "****************************************"
+  exit 0
+}
+
+while [ -n "$1" ]
+do
+  case $1 in
+    --version|-v)
+        print_version
+        ;;
+    --verbose|-w)
+        verbose=1
+        shift
+        ;;
+    --help|-h)
+        print_help
+        ;;
+    --update|-u)
+        UpdateLink=$2
+        do_update
+        ;;
+    *) echo "ERROR: unknown parametr."
+        print_help
+        ;;
+  esac
+  shift
 done
-shift $((OPTIND-1))
-
 log "Getting config"
-parsed=$($BASE/json.sh -b < $CFG_FN)
-
+parsed=$("${BASE}"/json.sh -b < "$CFG_FN")
 get_all_vals <<< "$parsed"
 api_key=${output_arr[api_key]}
 api_url=${output_arr[uri]}
 scripts_path=${output_arr[scripts_path]}
 timeout=${output_arr[timeout]}
-[ "$timeout" ] || timeout=30 # 30 seconds by default
 host_id=${output_arr[host_id]}
-
-[ -z "$api_key" -o -z "$api_url" ] && {
+if [ -z "$timeout" ];then
+  timeout=30                # 30 seconds by default
+fi
+if [ -z "$api_key" ] || [ -z "$api_url" ]; then
   echo "Vital configuration parameters are missing"
   exit 1
-}
-
-[ "$host_id" ] || initial_config
-
-# On interrupt need to kill them all
-#trap do_exit EXIT
-
+fi
+if [ -z "$host_id" ];then
+  initial_config            # if host_id empty, create check point on server
+fi
 get_new_checks=1 # Get the checks first time
 # Just a cycle so we don't quit while the background checks are running
 while true; do
   if [ "$get_new_checks" ]; then
     make_request "mon_action=check/status&class=host&id=$host_id"
     make_checks_config # Copy them to the separate structure
-
     # Get ids of all checks
-    check_ids=$(echo "${!checks_config[@]}"|awk -F, 'BEGIN{RS=" "}{print $1}'|sort -u)
-    #check_ids=523
-    log "Cids: "$check_ids
-
+    check_ids=$(echo "${!checks_config[@]}" | awk -F, 'BEGIN{RS=" "}{print $1}' | sort -u)
+    log "Cids: " $(echo ${check_ids[*]})      # print array ids in one line.
     declare -A checks # What checks should run, storing time of next invocation here, storing everything in fact
     for cid in $check_ids; do
       # Initialise previous state from server for everyone
@@ -197,18 +243,13 @@ while true; do
       log "$cid: passive is false"
       continue
     fi
-
-#     приходить - это unknown в рамках сервиса. И значение check_not_found в параметре
-# message.
-
     # Check if we need to start it
     state=${checks[$cid,state]}
     next_ts=${checks[$cid,next_ts]}
-    [ $state -eq 0 -a $next_ts -ne 0 -a $next_ts -gt $cur_time ] && continue
+    [ "$state" -eq 0 ] && [ "$next_ts" -ne 0 ] && [ "$next_ts" -gt "$cur_time" ] && continue
     # In any other case need to run the check
     log "$cid: Starting check"
-
-    check_sub $cid &
+    check_sub "$cid" &
     checks[$cid,pid]=$!
   done
 
@@ -221,46 +262,45 @@ while true; do
     fi
 
     echo "$cid: Waiting"
-    wait ${checks[$cid,pid]}
+    wait "${checks[$cid,pid]}"
     checks[$cid,pid]=''
     state=$?
     #res=${checks[$cid,result]}
     prev_state=${checks[$cid,state]}
     log "$cid: State: $prev_state → $state"
     # read state output <<< $res
-    output=$(</tmp/$cid.out) # Empty if there's no file
+    output=$(</tmp/"${cid}".out) # Empty if there's no file
 
     need_send=
     # [ $prev_state -eq 0 ] && need_send=1
     cur_time=$(date +%s)
     next_ts=${checks[$cid,next_ts]}
-    if [ $state -ne $prev_state ]; then
+    if [ $state -ne "$prev_state" ]; then
       log "$cid: State has changed" # Need to send
       need_send=1
     else # The time has elapsed?
-      if [ $next_ts -eq 0 -o $next_ts -le $cur_time ]; then
-	need_send=1
-	# And set next interval
+      if [ "$next_ts" -eq 0 ] || [ "$next_ts" -le "$cur_time" ]; then
+	      need_send=1
+	      # And set next interval
       fi
     fi
-
     checks[$cid,state]=$state # Update previous code
-
     if [ "$need_send" ]; then
       # Setup next wake up time (if status is not 0, it'll start anyway)
       interval=${checks_config[$cid,interval]}
       next_ts=$(date +%s)
-      next_ts=$((next_ts+$interval*60))
+      next_ts=$((next_ts + "$interval" * 60))
       checks[$cid,next_ts]=$next_ts
       log "$cid: next_ts=$next_ts"
 
       log "$cid: Sending to server"
       make_request "id=$cid&mon_action=check/handle_result&result=$output&state=$state"
-      if [ ${output_arr[data,active]} != true ]; then # Remove the check
-	log "$cid: Removing the check, it's not active anymore"
-	for k in ${!checks[@]}; do [ ${a%%,*} = $cid ] && unset checks[$k]; done
+      if [ "${output_arr[data,active]}" != true ]; then # Remove the check
+	      log "$cid: Removing the check, it's not active anymore"
+	      for k in "${!checks[@]}"; do 
+          [ "${a%%,*}" = "$cid" ] && unset "checks[$k]";
+        done
       fi
-
       # Если в ответе мы приходит параметр push_checks=true, то мы запрашиваем
       # полный список сервисов с сервера
       [ "${output_arr[data,push_checks]}" ] && get_new_checks=1
@@ -270,22 +310,9 @@ while true; do
     # [ "${!checks[*]}" ] || get_new_checks=1
   done
   #break
-
-  # next_ts=$(date +%s)
-  # if [ $state -ne 0 ]; then
-  #   log "$cid: state is not zero, checking every minute"
-  # else
-  #   interval=${checks_config[$cid,interval]}
-  #   next_ts=$((next_ts+$interval*60))
-  # fi
-  # checks[$cid,next_ts]=$next_ts
-  # checks[$cid,state]=$state # Update previous code
-
   # В финале выполнения служба удаляет отключенные проверки из очереди. Если
   # очередь пустая, то запрашивает полный список проверок с сервера.
-  [ ! -z "${check_ids}" ] || get_new_checks=1
-
+  [ -n "${check_ids}" ] || get_new_checks=1
   log "Sleeping until next round"
   sleep 60 # Can do something here
-  #sleep 5
 done

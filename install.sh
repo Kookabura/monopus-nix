@@ -1,6 +1,5 @@
-#!/bin/sh
+#!/bin/bash
 
-log_console=s
 verbose=1
 wait_time=360 # Default time to wait before running a newly added check
 KEEP_CFG="false"
@@ -9,14 +8,14 @@ KEEP_CFG="false"
 usage ()
 {
   cat <<EOF >&2
- `basename $0`: Install monopus monitoring software
-sh ./`basename $0` [-hd] -k <api_key>
+ $(basename "$0"): Install monopus monitoring software
+sh ./$(basename "$0") [-hd] -k <api_key>
  	-h 				- Print this message
  	-d 				- Deinstall monopus monitor
  	-k<api_key>		- API_KEY (get in your profile)
 	-u 				- Forced file update
 Examples:
-sh ./`basename $0` -kPtXwn4Stv3UdbmvEyEKHfvKEVdGyWN2Lh0iF4b8Ae2Oppj4YYO - Initialise subscription
+sh ./$(basename "$0") -kPtXwn4Stv3UdbmvEyEKHfvKEVdGyWN2Lh0iF4b8Ae2Oppj4YYO - Initialise subscription
 EOF
   exit 0
 }
@@ -24,41 +23,8 @@ EOF
 do_deinstall()
 {
   log "Deinstalling programs"
-
-  # Send stop command
-
-  # id=$(cat $CFG_FN | get_param id) # hostname
-  # CFG_API_KEY=$(cat $CFG_FN | get_param api_key)
-  # check_curl
-  # res=$($RETR "$PORTAL_URL?api_key=$CFG_API_KEY&action=delete&host_id=$id"|./json.sh -l)
-  # err=$(get_opt "$res" error)
-  # if [ "$err" ]; then
-  #   msg=$($PRINTF "$err")
-  #   log "Error deleting server: $msg"
-  #   exit 1
-  # fi
-  # result=$(get_opt "$res" result)
-  # log "Unregistration result: $($PRINTF "$result")"
-  # echo
-
-  # if [ -f /etc/redhat-release ]; then
-  #   case $(cut -f1 -d' ' < /etc/redhat-release) in
-  #     CentOS)
-  # 	service monopus stop
-  # 	chkconfig --del monopus;;
-  #   esac
-  #   rm /etc/init.d/monopus
-  # elif [ -f /etc/debian_version ]; then
-  #   service monopus stop
-  #   rm /etc/init.d/monopus
-  #   update-rc.d monopus remove
-  # else
-  #   : # Some other OS, not supported yet
-  # fi
   systemctl disable monopus
-  
-  rm -rf /etc/monopus.cfg $BASE $VAR
-  
+  rm -rf /etc/monopus.cfg "$BASE" "$VAR"
   log "Program deinstalled"
   exit 0
 }
@@ -67,19 +33,16 @@ do_install()
 {
   log "Installing programs"
   # Installing to /opt/monopus, also need /var/monopus
-  for i in $BASE/check_scripts $VAR; do test -d $i || mkdir -p $i; done
-  cp common.sh json.sh monopus $BASE # send_nrdp.sh
-  cp -r check_scripts/* $BASE/check_scripts
-  chmod -R +x $BASE/check_scripts/
-  
-  if (!($KEEP_CFG)); then
-	cp monopus.cfg $CFG_FN
+  for i in $BASE/check_scripts $VAR; do test -d "$i" || mkdir -p "$i"; done
+  cp common.sh json.sh monopus "$BASE" # send_nrdp.sh
+  cp -r check_scripts/* "${BASE}"/check_scripts
+  chmod -R +x "${BASE}"/check_scripts/
+  if (! ($KEEP_CFG)); then
+	  cp monopus.cfg "$CFG_FN"
   fi
-  
   cp monopus.service /etc/systemd/system/
   systemctl enable monopus
   systemctl start monopus
-  
   log "Programs installed"
 }
 
@@ -92,7 +55,7 @@ ver_lt()
   old_major=${2%.*}
   old_major=${old_major/./}
 
-  [ $new_major -lt $old_major ] || [ $new_major -eq $old_major -a ${1##*.} -lt ${2##*.} ]
+  [ $new_major -lt $old_major ] || [ $new_major -eq $old_major ] && [ ${1##*.} -lt ${2##*.} ]
 }
 
 while getopts "?duk:" opt; do
@@ -105,16 +68,16 @@ while getopts "?duk:" opt; do
 done
 shift $((OPTIND-1))
 
-[ $(id -u) -ne 0 ] && { log "Need root privileges to install"; exit 1; }
+[ "$(id -u)" -ne 0 ] && { log "Need root privileges to install"; exit 1; }
 
 check_curl
 
 hostname=$(hostname)
-if [ -f $CFG_FN ]; then
+if [ -f "$CFG_FN" ]; then
   log "Monopus is already installed, checking if we need to update files"
-  our_ver=$(cat $CFG_FN | get_param version)
+  our_ver=$( < "$CFG_FN" get_param version)
   new_ver=$(cat version.txt)
-  if ver_lt $new_ver ${our_ver:-0.00}; then
+  if ver_lt "$new_ver" "${our_ver:-0.00}"; then
     log "You already have the latest version."
     exit 1
   fi
@@ -131,4 +94,4 @@ fi
 
 do_install $KEEP_CFG
 
-[ "$CFG_API_KEY" ] && set_param $CFG_FN api_key $CFG_API_KEY
+[ "$CFG_API_KEY" ] && set_param "$CFG_FN" api_key "$CFG_API_KEY"
