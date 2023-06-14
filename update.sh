@@ -4,7 +4,7 @@ BASE=""                 # Absolute path from run update.sh
 INST=/opt/mondistr      # Dir from install update
 CFG_FN=/etc/monopus.cfg # Config file to store information in
 UpdateLink=""           # From Update
-Version="1.2"           # Version script
+Version="1.3"           # Version script
 
 # Print help for Monopus
 print_help() {
@@ -31,6 +31,7 @@ check_update() {
     UpdateLink=$1
   fi
 }
+
 # Check exist Monopus
 check_monopus() {
   if [ -s "$CFG_FN" ];then
@@ -50,18 +51,18 @@ while getopts "hv?" opt; do
   esac
 done
 shift $((OPTIND-1))
-BASE="$(cd "$(dirname "$1")"; pwd -P)/$(basename "$0")"
-echo "BASE -----  ${BASE}"
+BASE="$(pwd -P)/$(basename "$0")"               # absolute path from run update.sh
+Echo "Update.sh run from: $BASE"
 check_update "$1"
 if [ "$(id -u)" -ne 0 ]; then
   echo -e "\n\nNeed root privileges to update monopus!!! Exit";
   exit 1;
 fi
-rm -rf  ${INST}
+rm -rf  ${INST}                                 # delete if exist install directory, by default: /opt/mondistr 
 echo "Starting update monopus..."
 echo "Create Install directory."
 mkdir -p $INST
-if wget -c -q -O ${INST}/update.zip "$UpdateLink";then
+if wget -c -q -O ${INST}/update.zip "$UpdateLink";then  # if success download from link update
   echo "Download monopus from link: success"
 else
   echo "Download monopus from link: fail!  exit..."
