@@ -1,9 +1,10 @@
 #!/bin/bash
 # Script update monopus
+BASE=""                 # Absolute path from run update.sh
 INST=/opt/mondistr      # Dir from install update
 CFG_FN=/etc/monopus.cfg # Config file to store information in
 UpdateLink=""           # From Update
-Version="1.1"           # Version script
+Version="1.2"           # Version script
 
 # Print help for Monopus
 print_help() {
@@ -49,6 +50,8 @@ while getopts "hv?" opt; do
   esac
 done
 shift $((OPTIND-1))
+BASE="$(cd "$(dirname "$1")"; pwd -P)/$(basename "$0")"
+echo "BASE -----  ${BASE}"
 check_update "$1"
 if [ "$(id -u)" -ne 0 ]; then
   echo -e "\n\nNeed root privileges to update monopus!!! Exit";
@@ -86,11 +89,11 @@ if bash ${INST}/install.sh -u; then
   systemctl daemon-reload
   echo "Restarting monopus daemon"
   systemctl restart monopus
-  rm -rf  ${INST}
+  rm -rf  ${INST} "${BASE}"
   echo "Update saccessful, well done."
 else
   echo "Install.sh exit with error."
   systemctl daemon-reload             # in main 1.0.4 exist error, delele this 2 line, after
   systemctl restart monopus           # correction
-  rm -rf  ${INST}
+  rm -rf  ${INST} "${BASE}"
 fi
