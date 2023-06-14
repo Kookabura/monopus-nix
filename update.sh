@@ -52,7 +52,7 @@ while getopts "hv?" opt; do
 done
 shift $((OPTIND-1))
 BASE="$(pwd -P)/$(basename "$0")"               # absolute path from run update.sh
-Echo "Update.sh run from: $BASE"
+echo "Update.sh run from: $BASE"
 check_update "$1"
 if [ "$(id -u)" -ne 0 ]; then
   echo -e "\n\nNeed root privileges to update monopus!!! Exit";
