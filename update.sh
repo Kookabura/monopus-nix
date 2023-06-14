@@ -3,7 +3,7 @@
 INST=/opt/mondistr      # Dir from install update
 CFG_FN=/etc/monopus.cfg # Config file to store information in
 UpdateLink=""           # From Update
-Version="1.0"           # Version script
+Version="1.1"           # Version script
 
 # Print help for Monopus
 print_help() {
@@ -54,6 +54,7 @@ if [ "$(id -u)" -ne 0 ]; then
   echo -e "\n\nNeed root privileges to update monopus!!! Exit";
   exit 1;
 fi
+rm -rf  ${INST}
 echo "Starting update monopus..."
 echo "Create Install directory."
 mkdir -p $INST
