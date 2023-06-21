@@ -6,10 +6,10 @@ states_text=("ok" "warning" "critical" "unknown")
 SERVICES_STR=""
 EXCLUDED_STR=""
 
-while [ -n "$1" ]; do                                   #process command line args
+while [ -n "$1" ]; do                             #process command line args
   case $1 in
-    -services)  shift; SERVICES_STR="$1";;  #services critical
-    -excluded)  shift; EXCLUDED_STR="$1";;  #services excluded from count and do not change state
+    -services)  shift; SERVICES_STR="$1";;        #services critical
+    -excluded)  shift; EXCLUDED_STR="$1";;        #services excluded from count and do not change state
   esac
   shift
 done
@@ -18,18 +18,23 @@ IFS=',' read -ra EXCLUDED <<< "$EXCLUDED_STR"
 if [ -f /bin/systemctl ]; then
   failed=$(/bin/systemctl --failed --no-legend)   #search all daemon with failed state
   failed=$(echo "$failed" | awk '{print $1}')     #Strip everything after first space in string
-	if [ "$failed" == "●" ]; then
+  if [[ "$failed" == *"●"* ]]; then               #if contein '●'
 		failed=$(/bin/systemctl --failed --no-legend | sed '/^[[:space:]]*$/d' | awk '{print $2}')
 	fi
   failed=$(echo "$failed" | awk -F.service '{print $1}' | tr -s '\n' ',') #Strip .service suffix and excahge \n to ,
   IFS=',' read -ra FAILED <<< "$failed"           #array names failed deamons
-  if [ "${#FAILED}" -gt 0 ]; then
-    if [ "${#EXCLUDED}" -gt 0 ]; then             #process excluded services
+  if [ "${#FAILED[*]}" -gt 0 ] && [ "${FAILED[*]}" != "" ]; then
+    if [ "${#EXCLUDED[*]}" -gt 0 ]; then          #process excluded services
       for exc in "${EXCLUDED[@]}"
       do
-        FAILED=("${FAILED[@]/$exc}")              #do not edit - this is correct code, "" - a broke code
+        for i in "${!FAILED[@]}"
+        do
+          if [[ "${FAILED[i]}" == *"$exc"* ]]; then #if element exclude containment in failed array partially
+            unset 'FAILED[i]'                     #delete them
+          fi
+        done
       done
-      if [ "${#FAILED}" -gt 0 ]; then             #calulate number failed state daemons.
+      if [ "${#FAILED[*]}" -gt 0 ] && [ "${FAILED[*]}" != "" ]; then #calulate number failed state daemons.
         state=1
       else
         state=0
@@ -37,12 +42,12 @@ if [ -f /bin/systemctl ]; then
     else
       state=1
     fi
-    if [ "${#SERVICES}" -gt 0 ]; then             #process important services
+    if [ "${#SERVICES[*]}" -gt 0 ]; then          #process important services
       for SERVICE in "${SERVICES[@]}"
       do
         for FAIL in "${FAILED[@]}"
         do
-          if [ "$FAIL" == "$SERVICE" ]; then
+          if [[ "$FAIL" == *"$SERVICE"* ]]; then
             state=2
           fi
         done
@@ -52,5 +57,10 @@ if [ -f /bin/systemctl ]; then
     state=0
   fi
 fi
-echo "check_failed_services.${states_text[$state]}::services==${FAILED[*]} | services=${#FAILED};;;"
+if [ "${FAILED[*]}" == "" ]; then                 #if array contain void
+  count_failed=0
+else
+  count_failed="${#FAILED[*]}"
+fi
+echo "check_failed_services.${states_text[$state]}::services==${FAILED[*]} | services=$count_failed;;;"
 exit $state
