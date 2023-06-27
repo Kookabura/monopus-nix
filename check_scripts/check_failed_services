@@ -21,7 +21,7 @@ if [ -f /bin/systemctl ]; then
   if [[ "$failed" == *"●"* ]]; then               #if contein '●'
 		failed=$(/bin/systemctl --failed --no-legend | sed '/^[[:space:]]*$/d' | awk '{print $2}')
 	fi
-  failed=$(echo "$failed" | awk -F.service '{print $1}' | tr -s '\n' ',') #Strip .service suffix and excahge \n to ,
+  failed=$(echo "$failed" | awk -F.service '{print $1}' | tr -s '\n' ',') #Strip .service suffix and exchange \n to ,
   IFS=',' read -ra FAILED <<< "$failed"           #array names failed deamons
   if [ "${#FAILED[*]}" -gt 0 ] && [ "${FAILED[*]}" != "" ]; then
     if [ "${#EXCLUDED[*]}" -gt 0 ]; then          #process excluded services
@@ -59,8 +59,14 @@ if [ -f /bin/systemctl ]; then
 fi
 if [ "${FAILED[*]}" == "" ]; then                 #if array contain void
   count_failed=0
+  enum_services=""
 else
   count_failed="${#FAILED[*]}"
+  for enum in "${FAILED[@]}"
+  do
+    enum_services="$enum_services, $enum"
+  done
+  enum_services=$(echo "$enum_services" | sed 's/..$//' | sed 's/^..//') #remove from begin and end 2 chars
 fi
-echo "check_failed_services.${states_text[$state]}::services==${FAILED[*]} | services=$count_failed;;;"
+echo "check_failed_services.${states_text[$state]}::services==$enum_services | services=$count_failed;;;"
 exit $state
