@@ -222,7 +222,7 @@ while true; do
 
     echo "$cid: Waiting"
     wait ${checks[$cid,pid]}
-    checks[$cid,pid]=''
+    #checks[$cid,pid]=''
     state=$?
     #res=${checks[$cid,result]}
     prev_state=${checks[$cid,state]}
