@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+ - check_scripts/check_mongodb.sh
+
+### Fixed
+
+- check_scripts/check_failed_services. Fixed service name parsing previously overwritten by new changes
+
 ## [1.0.4]
 
 ### Changed

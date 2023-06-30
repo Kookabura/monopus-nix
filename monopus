@@ -69,8 +69,8 @@ make_request() {
 
   status=${output_arr[success]}
   if [ "$status" = false ]; then
-    echo "Error: ${output_arr[message]}"
-    exit 1
+    log "Error: ${output_arr[message]}"
+    #exit 1
   fi
   # Here we have variables in output_arr
 }
@@ -222,7 +222,7 @@ while true; do
 
     echo "$cid: Waiting"
     wait ${checks[$cid,pid]}
-    checks[$cid,pid]=''
+    #checks[$cid,pid]=''
     state=$?
     #res=${checks[$cid,result]}
     prev_state=${checks[$cid,state]}

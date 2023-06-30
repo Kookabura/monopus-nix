@@ -87,7 +87,12 @@ do_install()
 # returns true if version in $1 is lower (<) than in $2
 ver_lt()
 {
-  [ ${1%.*} -lt ${2%.*} ] || [ ${1%.*} -eq ${2%.*} -a ${1#*.} -lt ${2#*.} ]
+  new_major=${1%.*}
+  new_major=${new_major/./}
+  old_major=${2%.*}
+  old_major=${old_major/./}
+
+  [ $new_major -lt $old_major ] || [ $new_major -eq $old_major -a ${1##*.} -lt ${2##*.} ]
 }
 
 while getopts "?duk:" opt; do

@@ -48,9 +48,9 @@ do
   shift
 done
 
-[ ! -z ${WARN} ] && [ ! -z ${CRIT} ] || usage
-if [ ! -z ${FILE} ]; then
-  CONNECTIONS=$(echo "show processlist;" | mysql --defaults-file=${FILE} 2> /dev/null | sed 1,1d  | wc -l)
+[ -n "${WARN}" ] && [ -n "${CRIT}" ] || usage
+if [ -n "${FILE}" ]; then
+  CONNECTIONS=$(echo "show processlist;" | mysql --defaults-file="${FILE}" 2> /dev/null | sed 1,1d  | wc -l)
 else
   CONNECTIONS=$(echo "show processlist;" | mysql  2> /dev/null | sed 1,1d | wc -l)
   MAX_CONNECTIONS=$(echo "show variables like 'max_connections';" | mysql 2> /dev/null | sed 1,1d | awk '{print $2}')
