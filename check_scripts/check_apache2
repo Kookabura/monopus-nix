@@ -221,7 +221,7 @@ get_vals() {
 	if [ -s /tmp/${process}_2min_stat.txt ] # if file exist and not empty
     then
         stat="$(cat /tmp/${process}_2min_stat.txt)"
-        cpu_load=$(echo "$stat" | awk '{print $8}' | tr "[:space:]" '+')
+        cpu_load=$(echo "$stat" | tr "[:space:]" '+')
         cpu_load=$(echo "$cpu_load" | sed 's/.$//' | bc -l | awk '{printf "%.1f", $0}')
     fi
     if [ -s /tmp/server_status ]            # if file exist and not empty
