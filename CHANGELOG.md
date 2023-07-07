@@ -23,7 +23,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - check_scripts/check_mysql_connections chenged critical and warning process
 
-- check_scripts/check_nginx_errors changed count 502 and 504 errors
+- check_scripts/check_nginx_errors empty log for 24 hours
 
 - check_scripts/check_proxmox_backup changed job error, critical, warning process
 
