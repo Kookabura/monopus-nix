@@ -17,7 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- check_scripts/check_apache2 changed progname, while do loop, functions val_wcdiff_req, get_status, get_vals
+- check_scripts/check_apache2 metrics are recalculated
 
 - check_scripts/check_failed_services added comments to process line args, changed process failed processes
 
