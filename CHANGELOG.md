@@ -43,9 +43,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Removed
 
-- check_scripts/check_failed_services.bash 
+- check_scripts/check_failed_services.bash remove duplicateed scripts
 
-- check_scripts/check_mysql_replication.bash
+- check_scripts/check_mysql_replication.bash remove duplicated scripts
 
 ### Renamed
 
