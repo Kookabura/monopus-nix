@@ -13,6 +13,44 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - check_scripts/check_failed_services. Fixed service name parsing previously overwritten by new changes
 
+## [1.0.5]
+
+### Changed
+
+- check_scripts/check_apache2 metrics are recalculated
+
+- check_scripts/check_failed_services added comments to process line args, changed process failed processes
+
+- check_scripts/check_mysql_connections chenged critical and warning process
+
+- check_scripts/check_nginx_errors empty log for 24 hours
+
+- check_scripts/check_proxmox_backup changed job error, critical, warning process
+
+- install.sh added new_major and old_major to ver_it, added logging, commented checks[$cid,pid]
+
+### Added
+
+- check_scripts/check_mongodb
+
+- check_scripts/check_mysql_replication
+
+- check_scripts/get_backupstatus
+
+- check_scripts/pidstat.sh
+
+- update.sh
+
+### Removed
+
+- check_scripts/check_failed_services.bash remove duplicateed scripts
+
+- check_scripts/check_mysql_replication.bash remove duplicated scripts
+
+### Renamed
+
+- check_scripts/check_http → check_scripts/check_website
+
 ## [1.0.4]
 
 ### Changed
