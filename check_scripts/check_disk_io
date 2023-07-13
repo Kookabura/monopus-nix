@@ -8,7 +8,11 @@ DISK=$1
 WARN=$2
 CRIT=$3
 
-stat=$(iostat -d "${DISK}" -xmt 1 10 | tail -n +7 | sed -n '3~4 p')
+if [ "$(iostat -d "${DISK}" | wc -l)" -gt 5 ]; then     #fix for debian (newer version iostat 12)
+  stat=$(iostat -d "${DISK}" -xmt 1 10 | tail -n +8 | sed -n '3~5 p')
+else
+  stat=$(iostat -d "${DISK}" -xmt 1 10 | tail -n +7 | sed -n '3~4 p')
+fi
 latency=$(echo "$stat" | awk '{print $10}' | tr "[:space:]" '+')
 rps=$(echo "$stat" | awk '{print $6}' | tr "[:space:]" '+')
 wps=$(echo "$stat" | awk '{print $7}' | tr "[:space:]" '+')
