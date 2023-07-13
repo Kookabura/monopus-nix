@@ -171,12 +171,9 @@ check_pid() {
 }
 
 check_processes() {
-    if [ $1 -lt 1 ]
-    then
-        echo "UNKNOWN - Your Apache server seems not to run. Is your Nagios \
-privileged to run 'ps ax' and is the Apache2 binary really located in \
-$path_binary?"
-        exit $ST_UK
+    if [ "$1" -lt 1 ]; then
+        echo "UNKNOWN - Your Apache server seems not to run. Is your Nagios privileged to run 'ps ax' and is the Apache2 binary really located in $path_binary?"
+        exit "$ST_UK"
     fi
 }
 
@@ -184,8 +181,7 @@ check_output() {
     stat_output=$(stat -c %s ${output_dir}/server-status)
     if [ "$stat_output" = 0 ]
     then
-        echo "UNKNOWN - Local copy of server-status is empty. Are we \
-allowed to access http://${hostname}:${port}/server-status?"
+        echo "UNKNOWN - Local copy of server-status is empty. Are we allowed to access http://${hostname}:${port}/server-status?"
         exit $ST_UK
     fi
 }
@@ -239,18 +235,18 @@ get_vals() {
         kb2=$(echo "${status_cur}" | head -n2 | tail -n1 | awk '{print $3}')
         ((kb = kb2 - kb1))
         #kb_psec=$(echo "scale=2; ${kb} / ${uptime}" | bc -l | awk '{printf "%.2f", $0}')
-        bytes_psec=$(echo "scale=2; (${kb} / ${uptime}) * 1024" | bc -l | awk '{printf "%d", $0}')
+        mbs_psec=$(echo "scale=3; (${kb} / ${uptime}) / 1024" | bc -l | awk '{printf "%.3f", $0}')
         # bytes per request
         #kb_preq=$(echo "${kb} / ${req}" | bc -l | awk '{printf "%.2f", $0}')
-        bytes_preq=$(echo "(${kb} / ${req}) * 1024" | bc -l | awk '{printf "%d", $0}')
+        mbs_preq=$(echo "scale=3; (${kb} / ${req}) / 1024" | bc -l | awk '{printf "%.3f", $0}')
         # busy workers
         wkrs_busy=$(echo "${status_cur}" | head -n8 | tail -n1 | awk '{print $2}')
         # idle workers
         wkrs_idle=$(echo "${status_cur}" | head -n9 | tail -n1 | awk '{print $2}')
     else                                # if /tmp/server_status not exist - return empty metrics
         req_psec=0
-        bytes_psec=0
-        bytes_preq=0
+        mbs_psec=0
+        mbs_preq=0
         wkrs_busy=0
         wkrs_idle=0
     fi
@@ -261,9 +257,7 @@ do_output() {
 }
 
 do_perfdata() {
-    perfdata="cpu_load=${cpu_load};;;; req_psec=${req_psec};;;; \
-bytes_psec=${bytes_psec};;;; bytes_preq=${bytes_preq};;;; workers_busy=${wkrs_busy};;;; \
-workers_idle=${wkrs_idle};;;;"
+    perfdata="cpu_load=${cpu_load};;;; req_psec=${req_psec};;;; workers_busy=${wkrs_busy};;;; workers_idle=${wkrs_idle};;;; bytes_psec=${mbs_psec};;;; bytes_preq=${mbs_preq};;;;" 
 }
 
 # Check value warnings/criticals thresholds
@@ -314,7 +308,7 @@ else
         elif [ "${req_psec}" -ge "${crit_req}" ]
         then
             echo "check_apache2.critical::${output}|${perfdata}"
-        exit $ST_CR
+            exit $ST_CR
         else
             echo "check_apache2.ok::${output}|${perfdata}"
             exit $ST_OK

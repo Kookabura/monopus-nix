@@ -1,36 +1,32 @@
 #!/bin/bash
-#
-# Felipe Ferreira 07/2016
-#
-# Local Disk await
-# await =  The average time (in milliseconds) for I/O requests issued to the device to be served. This includes the time spent by the requests in  queue  and the time spent servicing them.
-
-# IMPORTANT: Requires iostat
 
 #Example
 #./check_io_disk.sh sdc 20.0 28.0
-# check_disk_io_ok::disk==sda__await=0.8 | await=0.8;;;;
-
+#example output: check_disk_io_ok::disk==sda__await=0.8 | await=0.8;;;; read=0.35;;;; write=1.7;;;;
 
 DISK=$1
 WARN=$2
 CRIT=$3
 
-R=$(iostat -d $DISK -xmt  1 10 |  awk '{ sum += $10; n++ } END { if (n > 0) print sum / n; }' |cut -c 1-3)
+stat=$(iostat -d "${DISK}" -xmt 1 10 | tail -n +7 | sed -n '3~4 p')
+latency=$(echo "$stat" | awk '{print $10}' | tr "[:space:]" '+')
+rps=$(echo "$stat" | awk '{print $6}' | tr "[:space:]" '+')
+wps=$(echo "$stat" | awk '{print $7}' | tr "[:space:]" '+')
+L=$(echo "$latency" | sed 's/.$//' | bc -l | awk '{printf "%.2f", $0/9}')
+R=$(echo "$rps" | sed 's/.$//' | bc -l | awk '{printf "%.2f", $0/9}')
+W=$(echo "$wps" | sed 's/.$//' | bc -l | awk '{printf "%.2f", $0/9}')
 
-if [ -z $R ]; then
+if [ -z "$L" ]; then
         echo "check_disk_io_unknown::disk==${DISK}"
         exit 3
 fi
 
-MSG=" Disk $DISK await time is $R ms | await=$R"
-
-if (( $(bc <<< "$R > $CRIT") )); then
-        echo "check_disk_io_critical::disk==${DISK}__await==${R} | await=$R;;;;"
+if (( $(bc <<< "$L > $CRIT") )); then
+        echo "check_disk_io_critical::disk==${DISK}__await==${L} | await=$L;;;; read=${R};;;; write=${W};;;;"
         exit 2
-elif (( $(bc <<< "$R > $WARN") )); then
-        echo "check_disk_io_warning::disk==${DISK}__await==${R} | await=$R;;;;"
+elif (( $(bc <<< "$L > $WARN") )); then
+        echo "check_disk_io_warning::disk==${DISK}__await==${L} | await=$L;;;; read=${R};;;; write=${W};;;;"
         exit 1
 fi
-echo "check_disk_io_ok::disk==${DISK}__await==${R} | await=$R;;;;"
+echo "check_disk_io_ok::disk==${DISK}__await==${L} | await=$L;;;; read=${R};;;; write=${W};;;;"
 exit 0
