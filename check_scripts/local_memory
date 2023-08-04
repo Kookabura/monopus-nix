@@ -1,44 +1,48 @@
 #!/bin/bash
 
-if [ "$1" = "-w" ] && [ "$2" -gt "0" ] && [ "$3" = "-c" ] && [ "$4" -gt "0" ]; then
+if [ "$1" = "-w" ] && [ "$2" -gt "0" ] && [ "$3" = "-c" ] && [ "$4" -gt "0" ] && [ "$2" -lt "$4" ]; then
 
-        mem_m=`free -m |grep Mem`
-        mem_b=`free -b |grep Mem`
-        memTotal_b=`echo $mem_b |awk '{print $2}'`
-        memFree_b=`echo $mem_b |awk '{print $4}'`
-        memBuffer_b=`echo $mem_b |awk '{print $6}'`
-        memCache_b=`echo $mem_b |awk '{print $7}'` # available memory
-
-        memTotal_m=`echo $mem_m |awk '{print $2}'`
-        memFree_m=`echo $mem_m |awk '{print $4}'`
-        memBuffer_m=`echo $mem_m |awk '{print $6}'`
-        memCache_m=`echo $mem_m |awk '{print $7}'` # available memory
-
-        memUsed_b=`echo $mem_b |awk '{print $3}'`
-        memUsed_m=`echo $mem_m |awk '{print $3}'`
-
-        memUsedPrc=$((($memUsed_b*100)/$memTotal_b))
-
-
-        if [ "$memUsedPrc" -ge "$4" ]; then
-                echo "local_memory_cri::total==${memTotal_m}__used_unt==${memUsed_m}__user_pct==${memUsedPrc}|TOTAL=$memTotal_b;;;; USED=$memUsed_b;;;; CACHE=$memCache_b;;;; BUFFER=$memBuffer_b;;;;"
-                $(exit 2)
-        elif [ "$memUsedPrc" -ge "$2" ]; then
-                echo "local_memory_war::total==${memTotal_m}__used_unt==${memUsed_m}__user_pct==${memUsedPrc}|TOTAL=$memTotal_b;;;; USED=$memUsed_b;;;; CACHE=$memCache_b;;;; BUFFER=$memBuffer_b;;;;"
-                $(exit 1)
-        else
-                echo "local_memory_ok::total==${memTotal_m}__used_unt==${memUsed_m}__user_pct==${memUsedPrc}|TOTAL=$memTotal_b;;;; USED=$memUsed_b;;;; CACHE=$memCache_b;;;; BUFFER=$memBuffer_b;;;;"
-                $(exit 0)
+        if [ "$2" -gt "100" ] && [ "$4" -gt "100" ]; then
+                echo "warning or error level above 100%"
+                exit 3
         fi
+        m=$(free -m | head -n 2 | tail -n 1)    #in Megabytes    
+        b=$(free -b | head -n 2 | tail -n 1)    #in bytes
+
+        bTotal=$(echo "$b" | awk '{print $2}')  #all block values in bytes
+        bFree=$(echo "$b" | awk '{print $4}')
+        bBuffer=$(echo "$b" | awk '{print $6}')
+        bCache=$(echo "$b" | awk '{print $7}') 
+
+        mTotal=$(echo "$m" | awk '{print $2}')  #all block values in Megabytes
+        mFree=$(echo "$m" | awk '{print $4}')
+        mBuffer=$(echo "$m" | awk '{print $6}')
+        mCache=$(echo "$m" | awk '{print $7}') 
+
+        bUsed=$(echo "$b" | awk '{print $3}')   #Used in bytes
+        mUsed=$(echo "$m" | awk '{print $3}')   #Used in Megabytes
+
+        Used=$((( bUsed * 100) / bTotal))       #Calculate procent used memory
+
+        if [ "$Used" -ge "$4" ]; then
+                echo "local_memory_cri::total==${mTotal}__used_unt==${mUsed}__user_pct==${Used}|TOTAL=$bTotal;;;; USED=$bUsed;;;; CACHE=$bCache;;;; BUFFER=$bBuffer;;;;"
+                exit 2
+        elif [ "$Used" -ge "$2" ]; then
+                echo "local_memory_war::total==${mTotal}__used_unt==${mUsed}__user_pct==${Used}|TOTAL=$bTotal;;;; USED=$bUsed;;;; CACHE=$bCache;;;; BUFFER=$bBuffer;;;;"
+                exit 1
+        else
+                echo "local_memory_ok::total==${mTotal}__used_unt==${mUsed}__user_pct==${Used}|TOTAL=$bTotal;;;; USED=$bUsed;;;; CACHE=$bCache;;;; BUFFER=$bBuffer;;;;"
+                exit 0
+        fi 
 
 else
-        echo "check_mem v1.1"
+        echo "local_memory v1.0"
         echo ""
         echo "Usage:"
-        echo "check_mem.sh -w <warnlevel> -c <critlevel>"
+        echo "./local_memory -w <warnlevel> -c <critlevel>"
         echo ""
         echo "warnlevel and critlevel is percentage value without %"
         echo ""
-        echo "Copyright (C) 2012 Lukasz Gogolin (lukasz.gogolin@gmail.com)"
+        echo "Copyleft TolkIT (team@tolkit.top)"
         exit
 fi
