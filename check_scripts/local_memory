@@ -6,18 +6,27 @@ if [ "$1" = "-w" ] && [ "$2" -gt "0" ] && [ "$3" = "-c" ] && [ "$4" -gt "0" ] &&
                 echo "warning or error level above 100%"
                 exit 3
         fi
+        # Сomment that right now it is not necessary from the variables, in the future, if necessary, you can uncomment
         m=$(free -m | head -n 2 | tail -n 1)    #in Megabytes    
         b=$(free -b | head -n 2 | tail -n 1)    #in bytes
+        sm=$(free -m | tail -n 1)               #swap in Megabytes
+        #sb=$(free -b | tail -n 1)               #swap in bytes
 
         bTotal=$(echo "$b" | awk '{print $2}')  #all block values in bytes
-        bFree=$(echo "$b" | awk '{print $4}')
-        bBuffer=$(echo "$b" | awk '{print $6}')
-        bCache=$(echo "$b" | awk '{print $7}') 
+        #bFree=$(echo "$b" | awk '{print $4}')
+        #bBuffer=$(echo "$b" | awk '{print $6}')
+        #bCache=$(echo "$b" | awk '{print $7}') 
+        #bSwapTot=$(echo "$sb" | awk '{print $2}')
+        #bSwapUsed=$(echo "$sb" | awk '{print $3}')
+        #bSwapFree=$(echo "$sb" | awk '{print $4}')
 
         mTotal=$(echo "$m" | awk '{print $2}')  #all block values in Megabytes
-        mFree=$(echo "$m" | awk '{print $4}')
+        #mFree=$(echo "$m" | awk '{print $4}')
         mBuffer=$(echo "$m" | awk '{print $6}')
-        mCache=$(echo "$m" | awk '{print $7}') 
+        mCache=$(echo "$m" | awk '{print $7}')
+        mSwapTot=$(echo "$sm" | awk '{print $2}')
+        mSwapUsed=$(echo "$sm" | awk '{print $3}')
+        #mSwapFree=$(echo "$sm" | awk '{print $4}')
 
         bUsed=$(echo "$b" | awk '{print $3}')   #Used in bytes
         mUsed=$(echo "$m" | awk '{print $3}')   #Used in Megabytes
@@ -25,13 +34,13 @@ if [ "$1" = "-w" ] && [ "$2" -gt "0" ] && [ "$3" = "-c" ] && [ "$4" -gt "0" ] &&
         Used=$((( bUsed * 100) / bTotal))       #Calculate procent used memory
 
         if [ "$Used" -ge "$4" ]; then
-                echo "local_memory_cri::total==${mTotal}__used_unt==${mUsed}__user_pct==${Used}|TOTAL=$bTotal;;;; USED=$bUsed;;;; CACHE=$bCache;;;; BUFFER=$bBuffer;;;;"
+                echo "local_memory_cri::total==${mTotal}__used_unt==${mUsed}__user_pct==${Used}__swap_tot==${mSwapTot}__swap_used==${mSwapUsed}|TOTAL=${mTotal};;;; USED=${mUsed};;;; CACHE=${mCache};;;; BUFFER=${mBuffer};;;; SWAP_TOT=${mSwapTot};;;; SWAP_USED=${mSwapUsed}"
                 exit 2
         elif [ "$Used" -ge "$2" ]; then
-                echo "local_memory_war::total==${mTotal}__used_unt==${mUsed}__user_pct==${Used}|TOTAL=$bTotal;;;; USED=$bUsed;;;; CACHE=$bCache;;;; BUFFER=$bBuffer;;;;"
+                echo "local_memory_war::total==${mTotal}__used_unt==${mUsed}__user_pct==${Used}__swap_tot==${mSwapTot}__swap_used==${mSwapUsed}|TOTAL=${mTotal};;;; USED=${mUsed};;;; CACHE=${mCache};;;; BUFFER=${mBuffer};;;; SWAP_TOT=${mSwapTot};;;; SWAP_USED=${mSwapUsed}"
                 exit 1
         else
-                echo "local_memory_ok::total==${mTotal}__used_unt==${mUsed}__user_pct==${Used}|TOTAL=$bTotal;;;; USED=$bUsed;;;; CACHE=$bCache;;;; BUFFER=$bBuffer;;;;"
+                echo "local_memory_ok::total==${mTotal}__used_unt==${mUsed}__user_pct==${Used}__swap_tot==${mSwapTot}__swap_used==${mSwapUsed}|TOTAL=${mTotal};;;; USED=${mUsed};;;; CACHE=${mCache};;;; BUFFER=${mBuffer};;;; SWAP_TOT=${mSwapTot};;;; SWAP_USED=${mSwapUsed}"
                 exit 0
         fi 
 
