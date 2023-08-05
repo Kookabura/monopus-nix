@@ -3,8 +3,8 @@
 if [ "$1" = "-w" ] && [ "$2" -gt "0" ] && [ "$3" = "-c" ] && [ "$4" -gt "0" ] && [ "$2" -lt "$4" ]; then
 
         if [ "$2" -gt "100" ] && [ "$4" -gt "100" ]; then
-                echo "warning or error level above 100%"
-                exit 3
+                echo "warning_or_error_level_above_100"
+                exit 1
         fi
         # Сomment that right now it is not necessary from the variables, in the future, if necessary, you can uncomment
         m=$(free -m | head -n 2 | tail -n 1)    #in Megabytes    
