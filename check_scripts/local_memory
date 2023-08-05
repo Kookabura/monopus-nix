@@ -28,19 +28,29 @@ if [ "$1" = "-w" ] && [ "$2" -gt "0" ] && [ "$3" = "-c" ] && [ "$4" -gt "0" ] &&
         mSwapUsed=$(echo "$sm" | awk '{print $3}')
         #mSwapFree=$(echo "$sm" | awk '{print $4}')
 
+        #recalculate in Gigabytes
+        gTotal=$(echo "scale=2; ${mTotal} / 1024" | bc -l | awk '{printf "%.1f", $0}')
+        gUsed=$(echo "scale=2; ${mUsed} / 1024" | bc -l | awk '{printf "%.2f", $0}')
+        gCache=$(echo "scale=2; ${mCache} / 1024" | bc -l | awk '{printf "%.2f", $0}')
+        gBuffer=$(echo "scale=2; ${mBuffer} / 1024" | bc -l | awk '{printf "%.2f", $0}')
+        gSwapTot=$(echo "scale=2; ${mSwapTot} / 1024" | bc -l | awk '{printf "%.2f", $0}')
+        gSwapUsed=$(echo "scale=2; ${mSwapUsed} / 1024" | bc -l | awk '{printf "%.2f", $0}')
+
         bUsed=$(echo "$b" | awk '{print $3}')   #Used in bytes
         mUsed=$(echo "$m" | awk '{print $3}')   #Used in Megabytes
 
         Used=$((( bUsed * 100) / bTotal))       #Calculate procent used memory
 
+        output="total==${mTotal}__used_unt==${mUsed}__user_pct==${Used}__swap_tot==${mSwapTot}__swap_used==${mSwapUsed}"
+        perfdata="TOT=${gTotal};;;; USD=${gUsed};;;; CACH=${gCache};;;; BUF=${gBuffer};;;; SWAP_TOT=${gSwapTot};;;; SWAP_USED=${gSwapUsed}"
         if [ "$Used" -ge "$4" ]; then
-                echo "local_memory_cri::total==${mTotal}__used_unt==${mUsed}__user_pct==${Used}__swap_tot==${mSwapTot}__swap_used==${mSwapUsed}|TOTAL=${mTotal};;;; USED=${mUsed};;;; CACHE=${mCache};;;; BUFFER=${mBuffer};;;; SWAP_TOT=${mSwapTot};;;; SWAP_USED=${mSwapUsed}"
+                echo "local_memory_cri::${output}|${perfdata}"
                 exit 2
         elif [ "$Used" -ge "$2" ]; then
-                echo "local_memory_war::total==${mTotal}__used_unt==${mUsed}__user_pct==${Used}__swap_tot==${mSwapTot}__swap_used==${mSwapUsed}|TOTAL=${mTotal};;;; USED=${mUsed};;;; CACHE=${mCache};;;; BUFFER=${mBuffer};;;; SWAP_TOT=${mSwapTot};;;; SWAP_USED=${mSwapUsed}"
+                echo "local_memory_war::${output}|${perfdata}"
                 exit 1
         else
-                echo "local_memory_ok::total==${mTotal}__used_unt==${mUsed}__user_pct==${Used}__swap_tot==${mSwapTot}__swap_used==${mSwapUsed}|TOTAL=${mTotal};;;; USED=${mUsed};;;; CACHE=${mCache};;;; BUFFER=${mBuffer};;;; SWAP_TOT=${mSwapTot};;;; SWAP_USED=${mSwapUsed}"
+                echo "local_memory_ok::${output}|${perfdata}"
                 exit 0
         fi 
 
@@ -53,5 +63,6 @@ else
         echo "warnlevel and critlevel is percentage value without %"
         echo ""
         echo "Copyleft TolkIT (team@tolkit.top)"
+        echo "author Sergey Egorushkin (SeroEgor@Gmail.com)"
         exit
 fi
