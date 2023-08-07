@@ -10,12 +10,19 @@ CRIT=$3
 
 if [ "$(iostat -d "${DISK}" | wc -l)" -gt 5 ]; then     #fix for debian (newer version iostat 12)
   stat=$(iostat -d "${DISK}" -xmt 1 10 | tail -n +8 | sed -n '3~5 p')
+  latency=$(echo "$stat" | awk '{print $10}' | tr "[:space:]" '+')
+  rps=$(echo "$stat" | awk '{print $3}' | tr "[:space:]" '+')
+  riops=$(echo "$stat" | awk '{print $2}' | tr "[:space:]" '+')
+  wps=$(echo "$stat" | awk '{print $9}' | tr "[:space:]" '+')             #9
+  wiops=$(echo "$stat" | awk '{print $8}' | tr "[:space:]" '+')
 else
   stat=$(iostat -d "${DISK}" -xmt 1 10 | tail -n +7 | sed -n '3~4 p')
+  latency=$(echo "$stat" | awk '{print $10}' | tr "[:space:]" '+')
+  rps=$(echo "$stat" | awk '{print $6}' | tr "[:space:]" '+')
+  riops=$(echo "$stat" | awk '{print $4}' | tr "[:space:]" '+')
+  wps=$(echo "$stat" | awk '{print $7}' | tr "[:space:]" '+')
+  wiops=$(echo "$stat" | awk '{print $5}' | tr "[:space:]" '+')
 fi
-latency=$(echo "$stat" | awk '{print $10}' | tr "[:space:]" '+')
-rps=$(echo "$stat" | awk '{print $6}' | tr "[:space:]" '+')
-wps=$(echo "$stat" | awk '{print $7}' | tr "[:space:]" '+')
 L=$(echo "$latency" | sed 's/.$//' | bc -l | awk '{printf "%.2f", $0/9}')
 R=$(echo "$rps" | sed 's/.$//' | bc -l | awk '{printf "%.2f", $0/9}')
 W=$(echo "$wps" | sed 's/.$//' | bc -l | awk '{printf "%.2f", $0/9}')
