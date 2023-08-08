@@ -26,10 +26,10 @@ if [ "$(iostat -d "${DISK}" | wc -l)" -gt 5 ]; then     #fix for debian (newer v
   prW=$(echo "1-$prR" | bc -l | awk '{printf "%.5f", $0}')              #procent write relatively sum read and write
   L=$(echo "($rL * $prR)+($wL * $prW)" | bc -l | awk '{printf "%.2f", $0}') #latency
   riops=$(echo "$stat" | awk '{print $2}' | tr "[:space:]" '+')         #read iops
-  wiops=$(echo "$stat" | awk '{print $8}' | tr "[:space:]" '+')         #write iopsDISK 
+  wiops=$(echo "$stat" | awk '{print $8}' | tr "[:space:]" '+')         #write iopsDISK
 else                                                    # older iostat 11 and belowe
   stat=$(iostat -d "${DISK}" -xmt 1 10 | tail -n +7 | sed -n '3~4 p')
-  if [ -z "$(iostat -V | grep "11.")" ]; then
+  if [ -z "$(iostat -V | grep "11.6")" ]; then
     latency=$(echo "$stat" | awk '{print $10}' | tr "[:space:]" '+')
     rps=$(echo "$stat" | awk '{print $6}' | tr "[:space:]" '+')
     wps=$(echo "$stat" | awk '{print $7}' | tr "[:space:]" '+')
@@ -38,7 +38,7 @@ else                                                    # older iostat 11 and be
     W=$(echo "$wps" | sed 's/.$//' | bc -l | awk '{printf "%.2f", $0/9}')
     riops=$(echo "$stat" | awk '{print $4}' | tr "[:space:]" '+')
     wiops=$(echo "$stat" | awk '{print $5}' | tr "[:space:]" '+')
-  else
+  else                                                  # additional replace "," to "." for bc 
     rlatency=$(echo "$stat" | awk '{print $9}' | tr "[:space:]" '+')    #read latency row number
     wlatency=$(echo "$stat" | awk '{print $10}' | tr "[:space:]" '+')   #write latency row number
     rL=$(echo "$rlatency" | sed 's/.$//' | sed 's/,/./g' | bc -l | awk '{printf "%.2f", $0/9}') #read latency
@@ -57,7 +57,6 @@ else                                                    # older iostat 11 and be
     riops=$(echo "$stat" | awk '{print $2}' | tr "[:space:]" '+')       #read iops
     wiops=$(echo "$stat" | awk '{print $3}' | tr "[:space:]" '+')       #write iopsDISK
   fi
-  
 fi
 
 if [ -z "$L" ]; then
