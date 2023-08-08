@@ -12,12 +12,12 @@ if [ "$(iostat -d "${DISK}" | wc -l)" -gt 5 ]; then     #fix for debian (newer v
   stat=$(iostat -d "${DISK}" -xmt 1 10 | tail -n +8 | sed -n '3~5 p')
   rlatency=$(echo "$stat" | awk '{print $6}' | tr "[:space:]" '+')      #read latency row number
   wlatency=$(echo "$stat" | awk '{print $12}' | tr "[:space:]" '+')     #write latency row number
-  rL=$(echo "$rlatency" | sed 's/.$//' | sed 's/,/./g' | bc -l | awk '{printf "%.2f", $0/9}') #read latency
-  wL=$(echo "$wlatency" | sed 's/.$//' | sed 's/,/./g' | bc -l | awk '{printf "%.2f", $0/9}') #write latency
+  rL=$(echo "$rlatency" | sed 's/.$//' | bc -l | awk '{printf "%.2f", $0/9}') #read latency
+  wL=$(echo "$wlatency" | sed 's/.$//' | bc -l | awk '{printf "%.2f", $0/9}') #write latency
   rps=$(echo "$stat" | awk '{print $3}' | tr "[:space:]" '+')           #read per sec in Mb row number
   wps=$(echo "$stat" | awk '{print $9}' | tr "[:space:]" '+')           #write per sec in Mb row number
-  R=$(echo "$rps" | sed 's/.$//' | sed 's/,/./g' | bc -l | awk '{printf "%.2f", $0/9}') #read per sec in Mb
-  W=$(echo "$wps" | sed 's/.$//' | sed 's/,/./g' | bc -l | awk '{printf "%.2f", $0/9}') #write per sec in Mb
+  R=$(echo "$rps" | sed 's/.$//' | bc -l | awk '{printf "%.2f", $0/9}') #read per sec in Mb
+  W=$(echo "$wps" | sed 's/.$//' | bc -l | awk '{printf "%.2f", $0/9}') #write per sec in Mb
   if [ "$(echo "$W + $R" | bc -l | awk '{printf "%d", $0}')" -eq 0 ]; then #if sum equal 0
     prR=0
   else
@@ -29,14 +29,35 @@ if [ "$(iostat -d "${DISK}" | wc -l)" -gt 5 ]; then     #fix for debian (newer v
   wiops=$(echo "$stat" | awk '{print $8}' | tr "[:space:]" '+')         #write iopsDISK 
 else                                                    # older iostat 11 and belowe
   stat=$(iostat -d "${DISK}" -xmt 1 10 | tail -n +7 | sed -n '3~4 p')
-  latency=$(echo "$stat" | awk '{print $10}' | tr "[:space:]" '+')
-  rps=$(echo "$stat" | awk '{print $6}' | tr "[:space:]" '+')
-  riops=$(echo "$stat" | awk '{print $4}' | tr "[:space:]" '+')
-  wps=$(echo "$stat" | awk '{print $7}' | tr "[:space:]" '+')
-  wiops=$(echo "$stat" | awk '{print $5}' | tr "[:space:]" '+')
-  L=$(echo "$latency" | sed 's/.$//' | sed 's/,/./g' | bc -l | awk '{printf "%.2f", $0/9}')
-  R=$(echo "$rps" | sed 's/.$//' | sed 's/,/./g' | bc -l | awk '{printf "%.2f", $0/9}')
-  W=$(echo "$wps" | sed 's/.$//' | sed 's/,/./g' | bc -l | awk '{printf "%.2f", $0/9}')
+  if [ -z "$(iostat -V | grep "11.")" ]; then
+    latency=$(echo "$stat" | awk '{print $10}' | tr "[:space:]" '+')
+    rps=$(echo "$stat" | awk '{print $6}' | tr "[:space:]" '+')
+    wps=$(echo "$stat" | awk '{print $7}' | tr "[:space:]" '+')
+    L=$(echo "$latency" | sed 's/.$//' | bc -l | awk '{printf "%.2f", $0/9}')
+    R=$(echo "$rps" | sed 's/.$//' | bc -l | awk '{printf "%.2f", $0/9}')
+    W=$(echo "$wps" | sed 's/.$//' | bc -l | awk '{printf "%.2f", $0/9}')
+    riops=$(echo "$stat" | awk '{print $4}' | tr "[:space:]" '+')
+    wiops=$(echo "$stat" | awk '{print $5}' | tr "[:space:]" '+')
+  else
+    rlatency=$(echo "$stat" | awk '{print $9}' | tr "[:space:]" '+')    #read latency row number
+    wlatency=$(echo "$stat" | awk '{print $10}' | tr "[:space:]" '+')   #write latency row number
+    rL=$(echo "$rlatency" | sed 's/.$//' | sed 's/,/./g' | bc -l | awk '{printf "%.2f", $0/9}') #read latency
+    wL=$(echo "$wlatency" | sed 's/.$//' | sed 's/,/./g' | bc -l | awk '{printf "%.2f", $0/9}') #write latency
+    rps=$(echo "$stat" | awk '{print $4}' | tr "[:space:]" '+')         #read per sec in Mb row number
+    wps=$(echo "$stat" | awk '{print $5}' | tr "[:space:]" '+')         #write per sec in Mb row number
+    R=$(echo "$rps" | sed 's/.$//' | sed 's/,/./g' | bc -l | awk '{printf "%.2f", $0/9}') #read per sec in Mb
+    W=$(echo "$wps" | sed 's/.$//' | sed 's/,/./g' | bc -l | awk '{printf "%.2f", $0/9}') #write per sec in Mb
+    if [ "$(echo "$W + $R" | bc -l | awk '{printf "%d", $0}')" -eq 0 ]; then #if sum equal 0
+      prR=0
+    else
+      prR=$(echo "$R / ($W + $R)" | bc -l | awk '{printf "%.6f", $0}')  #procent read relatively sum read and write
+    fi
+    prW=$(echo "1-$prR" | bc -l | awk '{printf "%.5f", $0}')            #procent write relatively sum read and write
+    L=$(echo "($rL * $prR)+($wL * $prW)" | bc -l | awk '{printf "%.2f", $0}') #latency
+    riops=$(echo "$stat" | awk '{print $2}' | tr "[:space:]" '+')       #read iops
+    wiops=$(echo "$stat" | awk '{print $3}' | tr "[:space:]" '+')       #write iopsDISK
+  fi
+  
 fi
 
 if [ -z "$L" ]; then
