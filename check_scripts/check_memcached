@@ -72,8 +72,8 @@ if [[ -z $limit_maxbytes ]] || [[ -z $bytes ]] || [[ $limit_maxbytes -eq 0 ]]; t
   used=0
   limit_gb=0.0
   hit_ratio=0
-  status="total==${limit_gb}__used==${used}__tot_con==${limit_conn}__cur_con==${cur_conn}__hit_rt==${hit_ratio}"
-  perfdata="TOTAL=${limit_maxbytes};;;; USED=${used};;;; TOTAL_CONN=${limit_conn};;;; CUR_CONN=${cur_conn};;;; HIT_RATE=${hit_ratio}"
+  status="tot_mem==${limit_gb}__used_mem==${used}__tot_con==${limit_conn}__cur_con==${cur_conn}__hit_rt==${hit_ratio}"
+  perfdata="TOT_MEM=${limit_gb};;;; USED_MEM=${used};;;; TOTAL_CONN=${limit_conn};;;; CUR_CONN=${cur_conn};;;; HIT_RATE=${hit_ratio}"
   echo "check_memcached.cri::${status}|${perfdata}"
   exit 2
 fi
@@ -86,8 +86,8 @@ fi
 
 hit_ratio=$(awk 'BEGIN { printf("%0.2f", ("'$get_hits'" / ("'$get_misses'" + "'$get_hits'")) * 100) }')
 limit_gb=$(awk 'BEGIN { printf("%0.1f", "'$limit_maxbytes'" / 1024 / 1024 / 1024) }')
-status="total==${limit_gb}__used==${used}__tot_con==${limit_conn}__cur_con==${cur_conn}__hit_rt==${hit_ratio}"
-perfdata="TOTAL=${limit_maxbytes};;;; USED=${used};;;; TOTAL_CONN=${limit_conn};;;; CUR_CONN=${cur_conn};;;; HIT_RATE=${hit_ratio}"
+status="tot_mem==${limit_gb}__used_mem==${used}__tot_con==${limit_conn}__cur_con==${cur_conn}__hit_rt==${hit_ratio}"
+perfdata="TOT_MEM=${limit_gb};;;; USED_MEM=${used};;;; TOTAL_CONN=${limit_conn};;;; CUR_CONN=${cur_conn};;;; HIT_RATE=${hit_ratio}"
 
 if [ "$(echo "$used > $crit" | bc)" -eq 1 ]; then
   echo "check_memcached.cri::${status}|${perfdata}"
