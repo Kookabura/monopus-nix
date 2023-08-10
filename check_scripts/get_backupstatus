@@ -1,6 +1,10 @@
 #!/bin/bash
 
-BACKUP_STORAGE="/backups/bases/*"
+BACKUP_STORAGE="$1"
+if [ ! -d "$BACKUP_STORAGE" ]; then
+        echo "get_backupstatus.err.folder_not_found"
+        exit 3
+fi
 NEW_COPIES=$(find $BACKUP_STORAGE -type f -mtime -2 | wc -l)
 ALL_COPIES=$(find $BACKUP_STORAGE -type f -mtime -7 | wc -l)
 
