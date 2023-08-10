@@ -42,7 +42,7 @@ if [ "$1" = "-w" ] && [ "$2" -gt "0" ] && [ "$3" = "-c" ] && [ "$4" -gt "0" ] &&
         Used=$((( bUsed * 100) / bTotal))       #Calculate procent used memory
 
         output="total==${mTotal}__used_unt==${mUsed}__user_pct==${Used}__swap_tot==${mSwapTot}__swap_used==${mSwapUsed}"
-        perfdata="TOT=${gTotal};;;; USD=${gUsed};;;; CACH=${gCache};;;; BUF=${gBuffer};;;; SWAP_TOT=${gSwapTot};;;; SWAP_USED=${gSwapUsed}"
+        perfdata="TOT=${gTotal};;;; USD=${Used};;;; CACH=${gCache};;;; BUF=${gBuffer};;;; SWAP_TOT=${gSwapTot};;;; SWAP_USED=${gSwapUsed}"
         if [ "$Used" -ge "$4" ]; then
                 echo "local_memory_cri::${output}|${perfdata}"
                 exit 2
