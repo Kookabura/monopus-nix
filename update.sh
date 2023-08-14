@@ -45,7 +45,7 @@ check_monopus() {
 
 # Update version monopus in cfg file
 update_ver() {
-  new_ver=$(< ${INST}/monopus.cfg head grep "version")
+  new_ver=$(< ${INST}/monopus.cfg grep "version")
   new_semi=$(< ${INST}/monopus.cfg grep "timeout")
   sed -i "s/.*version.*/$new_ver/" $CFG_FN       # update version in cfg 
   semicol=$(< /etc/monopus.cfg grep "timeout")
