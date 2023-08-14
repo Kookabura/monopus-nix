@@ -25,9 +25,9 @@ if [ -n "$2" ]; then                        #if <command update> not empty
         login=$(echo "$PASS" | awk '{print $2}') #login
         ip=$(echo "$PASS" | awk '{print $3}')    #ip
         if sshpass -p "${pass}" ssh -o StrictHostKeyChecking=no "${login}@${ip}" "$2"; then
-           echo "Update on ${login}@${ip} - success" >> $LOG # loggin success
+           echo "Update on ${login}@${ip} ($(hostname)) - success" >> $LOG # loggin success
         else                                                 # loggin fail
-           echo "Update on ${login}@${ip} - fail, exit code $?" >> $LOG
+           echo "Update on ${login}@${ip} ($(hostname)) - fail, exit code $?" >> $LOG
         fi 
       done
     else
