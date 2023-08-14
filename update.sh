@@ -47,10 +47,10 @@ check_monopus() {
 update_ver() {
   new_ver=$(< ${INST}/monopus.cfg head grep "version")
   new_semi=$(< ${INST}/monopus.cfg grep "timeout")
-  sed -i "s/.*version.*/$new_ver" $CFG_FN       # update version in cfg 
+  sed -i "s/.*version.*/$new_ver/" $CFG_FN       # update version in cfg 
   semicol=$(< /etc/monopus.cfg grep "timeout")
   if [ "${semicol: -1}" != "," ]; then          # if not semicolon in end line consist word 'timeout'
-    sed -i "s/.*timeout.*/$new_semi" $CFG_FN
+    sed -i "s/.*timeout.*/$new_semi/" $CFG_FN
   fi
   if ! < /etc/monopus.cfg grep "version"; then  # if not version line in cfg
     sed -n '6a\'"$new_ver"'' $CFG_FN
