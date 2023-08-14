@@ -43,6 +43,20 @@ check_monopus() {
   fi
 }
 
+# Update version monopus in cfg file
+update_ver() {
+  new_ver=$(< ${INST}/monopus.cfg head grep "version")
+  new_semi=$(< ${INST}/monopus.cfg grep "timeout")
+  sed -i "s/.*version.*/$new_ver" $CFG_FN       # update version in cfg 
+  semicol=$(< /etc/monopus.cfg grep "timeout")
+  if [ "${semicol: -1}" != "," ]; then          # if not semicolon in end line consist word 'timeout'
+    sed -i "s/.*timeout.*/$new_semi" $CFG_FN
+  fi
+  if ! < /etc/monopus.cfg grep "version"; then  # if not version line in cfg
+    sed -n '6a\'"$new_ver"'' $CFG_FN
+  fi
+}
+
 while getopts "hv?" opt; do
   case $opt in
     v) print_version;;
@@ -87,6 +101,7 @@ chmod 644 ${INST}/monopus.service ${INST}/monopus.cfg ${INST}/*.md
 check_monopus
 echo "I start the update through a script call: install.sh -u"
 cd ${INST} || echo "Unable to change directory!"
+update_ver
 if bash ${INST}/install.sh -u; then
   echo "Update went without error"
   systemctl daemon-reload
