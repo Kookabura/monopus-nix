@@ -2,8 +2,8 @@
 
 BACKUP_STORAGE="$1"
 if [ ! -d "$BACKUP_STORAGE" ]; then
-        echo "get_backupstatus.err.folder_not_found"
-        exit 3
+        echo "get_backupstatus.err_folder_not_found"
+        exit 2
 fi
 NEW_COPIES=$(find $BACKUP_STORAGE -maxdepth 1 -type f -mtime -2 | wc -l)
 WEEK_COPIES=$(find $BACKUP_STORAGE -maxdepth 1 -type f -mtime -7 | wc -l)
