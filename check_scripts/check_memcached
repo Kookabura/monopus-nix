@@ -47,14 +47,14 @@ warn=${warn:=90}
 crit=${crit:=95}
 
 if [[ $warn -ge $crit ]]; then
-  echo "check_memcached.unk::mess==warn_greater_or_equal_critical"
-  exit 3
+  echo "check_memcached.warcri"
+  exit 2
 fi
 
 output=$(echo 'stats' | nc "$host" "$port" 2> /dev/null)
 
 if [[ $? -ne 0 ]] || [[ -z $output ]]; then
-  echo "check_memcached.cri::mess==timeout_connection"
+  echo "check_memcached.timeout"
   exit 2
 fi
 
