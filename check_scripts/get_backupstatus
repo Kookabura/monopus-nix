@@ -2,20 +2,20 @@
 
 BACKUP_STORAGE="$1"
 if [ ! -d "$BACKUP_STORAGE" ]; then
-        echo "get_backupstatus.err_folder_not_found"
+        echo "get_backupstatus.err.folder_not_found"
         exit 2
 fi
-NEW_COPIES=$(find $BACKUP_STORAGE -maxdepth 1 -type f -mtime -2 | wc -l)
-WEEK_COPIES=$(find $BACKUP_STORAGE -maxdepth 1 -type f -mtime -7 | wc -l)
-ALL_COPIES=$(find $BACKUP_STORAGE -maxdepth 1 -type f | wc -l)
+NEW_COPIES=$(find "$BACKUP_STORAGE" -maxdepth 1 -type f -mtime -2 | wc -l)
+WEEK_COPIES=$(find "$BACKUP_STORAGE" -maxdepth 1 -type f -mtime -7 | wc -l)
+ALL_COPIES=$(find "$BACKUP_STORAGE" -maxdepth 1 -type f | wc -l)
 
 if [ $NEW_COPIES -lt 1 ]; then
-        echo "get_backupstatus.err.day_missing_copies | copies=$ALL_COPIES;;;;"
+        echo "get_backupstatus.err.day_missing_copies::copies==${ALL_COPIES} | copies=$ALL_COPIES;;;;"
         exit 2
 fi
 
 if [ $WEEK_COPIES -lt 7 ]; then
-        echo "get_backupstatus.err.week_missing_copies | copies=$WEEK_COPIES;;;;"
+        echo "get_backupstatus.err.week_missing_copies::copies==${WEEK_COPIES} | copies=$WEEK_COPIES;;;;"
         exit 1
 fi
 
@@ -23,5 +23,5 @@ fi
 # opt/monopus/monopus: line 212: wait: pid 2110 is not a child of this shell 
 #sleep 2
 
-echo "get_backupstatus.ok | copies=$ALL_COPIES;;;;"
+echo "get_backupstatus.ok::copies==${ALL_COPIES} | copies=${ALL_COPIES};;;;"
 exit 0
