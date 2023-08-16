@@ -3,8 +3,8 @@
 if [ "$1" = "-w" ] && [ "$2" -gt "0" ] && [ "$3" = "-c" ] && [ "$4" -gt "0" ] && [ "$2" -lt "$4" ]; then
 
         if [ "$2" -gt "100" ] && [ "$4" -gt "100" ]; then
-                echo "warning_or_error_level_above_100"
-                exit 1
+                echo "local_memory_err_param"
+                exit 2
         fi
         # Сomment that right now it is not necessary from the variables, in the future, if necessary, you can uncomment
         m=$(free -m | head -n 2 | tail -n 1)    #in Megabytes    
@@ -17,32 +17,32 @@ if [ "$1" = "-w" ] && [ "$2" -gt "0" ] && [ "$3" = "-c" ] && [ "$4" -gt "0" ] &&
 
         bTotal=$(echo "$b" | awk '{print $2}')  #all block values in bytes
         #bFree=$(echo "$b" | awk '{print $4}')
-        #bBuffer=$(echo "$b" | awk '{print $6}')
-        #bCache=$(echo "$b" | awk '{print $7}') 
+        bBuffer=$(echo "$b" | awk '{print $6}')
+        bCache=$(echo "$b" | awk '{print $7}') 
         #bSwapTot=$(echo "$sb" | awk '{print $2}')
         #bSwapUsed=$(echo "$sb" | awk '{print $3}')
         #bSwapFree=$(echo "$sb" | awk '{print $4}')
 
         mTotal=$(echo "$m" | awk '{print $2}')  #all block values in Megabytes
         #mFree=$(echo "$m" | awk '{print $4}')
-        mBuffer=$(echo "$m" | awk '{print $6}')
-        mCache=$(echo "$m" | awk '{print $7}')
+        #mBuffer=$(echo "$m" | awk '{print $6}')
+        #mCache=$(echo "$m" | awk '{print $7}')
         mSwapTot=$(echo "$sm" | awk '{print $2}')
         mSwapUsed=$(echo "$sm" | awk '{print $3}')
         #mSwapFree=$(echo "$sm" | awk '{print $4}')
 
         #recalculate in Gigabytes
-        gTotal=$(echo "scale=2; ${mTotal} / 1024" | bc -l | awk '{printf "%.1f", $0}')
-        gUsed=$(echo "scale=2; ${mUsed} / 1024" | bc -l | awk '{printf "%.2f", $0}')
-        gCache=$(echo "scale=2; ${mCache} / 1024" | bc -l | awk '{printf "%.2f", $0}')
-        gBuffer=$(echo "scale=2; ${mBuffer} / 1024" | bc -l | awk '{printf "%.2f", $0}')
+        #gTotal=$(echo "scale=2; ${mTotal} / 1024" | bc -l | awk '{printf "%.1f", $0}')
+        #gUsed=$(echo "scale=2; ${mUsed} / 1024" | bc -l | awk '{printf "%.2f", $0}')
+        #gCache=$(echo "scale=2; ${mCache} / 1024" | bc -l | awk '{printf "%.2f", $0}')
+        #gBuffer=$(echo "scale=2; ${mBuffer} / 1024" | bc -l | awk '{printf "%.2f", $0}')
         gSwapTot=$(echo "scale=2; ${mSwapTot} / 1024" | bc -l | awk '{printf "%.2f", $0}')
         gSwapUsed=$(echo "scale=2; ${mSwapUsed} / 1024" | bc -l | awk '{printf "%.2f", $0}')
 
         Used=$((( bUsed * 100) / bTotal))       #Calculate procent used memory
 
         output="total==${mTotal}__used_unt==${mUsed}__user_pct==${Used}__swap_tot==${mSwapTot}__swap_used==${mSwapUsed}"
-        perfdata="TOT=${gTotal};;;; USD=${gUsed};;;; CACH=${gCache};;;; BUF=${gBuffer};;;; SWAP_TOT=${gSwapTot};;;; SWAP_USED=${gSwapUsed}"
+        perfdata="TOTAL=${bTotal};;;; USED=${bUsed};;;; CACHE=${bCache};;;; BUFFER=${bBuffer};;;; SWAP_TOT=${gSwapTot};;;; SWAP_USED=${gSwapUsed}"
         if [ "$Used" -ge "$4" ]; then
                 echo "local_memory_cri::${output}|${perfdata}"
                 exit 2
