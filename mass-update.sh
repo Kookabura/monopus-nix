@@ -24,11 +24,19 @@ if [ -n "$2" ]; then                        #if <command update> not empty
         pass=$(echo "$PASS" | awk '{print $1}')  #password
         login=$(echo "$PASS" | awk '{print $2}') #login
         ip=$(echo "$PASS" | awk '{print $3}')    #ip
+        echo ""
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        echo "~  Connection to the ${ip}  ~"
+        echo "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+        echo ""
         if sshpass -p "${pass}" ssh -o StrictHostKeyChecking=no "${login}@${ip}" "$2"; then
            echo "Update on ${login}@${ip} ($(hostname)) - success" >> $LOG # loggin success
         else                                                 # loggin fail
            echo "Update on ${login}@${ip} ($(hostname)) - fail, exit code $?" >> $LOG
         fi 
+        echo ""
+        echo ""
+        echo ""
       done
     else
       echo "file with passwords is empty"
