@@ -51,7 +51,7 @@ if [[ $warn -ge $crit ]]; then
   exit 2
 fi
 
-output=$(echo 'stats' | nc "$host" "$port" 2> /dev/null)
+output=$(echo 'stats' | nc -w 1 "$host" "$port" 2> /dev/null)
 
 if [[ $? -ne 0 ]] || [[ -z $output ]]; then
   echo "check_memcached.timeout"
