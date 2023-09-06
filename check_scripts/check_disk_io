@@ -26,7 +26,7 @@ if [ "$(iostat -d "${DISK}" | wc -l)" -gt 5 ]; then     #fix for debian (newer v
   prW=$(echo "1-$prR" | bc -l | awk '{printf "%.5f", $0}')              #procent write relatively sum read and write
   L=$(echo "($rL * $prR)+($wL * $prW)" | bc -l | awk '{printf "%.2f", $0}') #latency
   riops=$(echo "$stat" | awk '{print $2}' | tr "[:space:]" '+')         #read iops
-  wiops=$(echo "$stat" | awk '{print $8}' | tr "[:space:]" '+')         #write iopsDISK
+  wiops=$(echo "$stat" | awk '{print $8}' | tr "[:space:]" '+')         #write iops DISK
 else                                                    # older iostat 11 and belowe
   stat=$(iostat -d "${DISK}" -xmt 1 10 | tail -n +7 | sed -n '3~4 p')
   if [ -z "$(iostat -V | grep "11.6")" ]; then
@@ -64,12 +64,14 @@ if [ -z "$L" ]; then
         exit 3
 fi
 
+output="disk==${DISK}__await==${L}"
+perfdata="await=${L};;;; read=${R};;;; write=${W};;;; riops=${riops};;;; wiops=${wiops};;;;"
 if (( $(bc <<< "$L > $CRIT") )); then
-        echo "check_disk_io_critical::disk==${DISK}__await==${L} | await=$L;;;; read=${R};;;; write=${W};;;;"
+        echo "check_disk_io_critical::${output} | ${perfdata}"
         exit 2
 elif (( $(bc <<< "$L > $WARN") )); then
-        echo "check_disk_io_warning::disk==${DISK}__await==${L} | await=$L;;;; read=${R};;;; write=${W};;;;"
+        echo "check_disk_io_warning::${output} | ${perfdata}"
         exit 1
 fi
-echo "check_disk_io_ok::disk==${DISK}__await==${L} | await=$L;;;; read=${R};;;; write=${W};;;;"
+echo "check_disk_io_ok::${output} | ${perfdata}"
 exit 0
