@@ -162,6 +162,12 @@ get_vals() {
         stat="$(cat /tmp/${process}_2min_stat.txt)"
         cpu_load=$(echo "$stat" | tr "[:space:]" '+')
         cpu_load=$(echo "$cpu_load" | sed 's/.$//' | bc -l | awk '{printf "%.1f", $0}')
+        if [ "$cpu_load" -gt 99 ]           # try catch efinity cpu load bug
+        then
+            file=$(date +"%F-%R.cpu-stat")
+            touch /tmp/"${file}"
+            echo "${stat}" > /tmp/"${file}"
+        fi
     fi
     if [ -s /tmp/server_status ]            # if file exist and not empty
     then 
