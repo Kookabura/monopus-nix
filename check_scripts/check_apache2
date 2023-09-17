@@ -162,7 +162,7 @@ get_vals() {
         stat="$(cat /tmp/${process}_2min_stat.txt)"
         cpu_load=$(echo "$stat" | tr "[:space:]" '+')
         cpu_load=$(echo "$cpu_load" | sed 's/.$//' | bc -l | awk '{printf "%.1f", $0}')
-        if [ "$cpu_load" -gt 99 ]           # try catch efinity cpu load bug
+        if [ "$(echo "$cpu_load > 99" | bc)" -eq 1 ]           # try catch infinity cpu load bug
         then
             file=$(date +"%F-%R.cpu-stat")
             touch /tmp/"${file}"
@@ -174,8 +174,8 @@ get_vals() {
         # requests per second
         taccess1=$(echo "${status_prev}" | head -n1 | awk '{print $3}')
         taccess2=$(echo "${status_cur}" | head -n1 | awk '{print $3}')
-        uptime1=$(echo "${status_prev}" | head -n4 | tail -n1 | awk '{print $2}')
-        uptime2=$(echo "${status_cur}" | head -n4 | tail -n1 | awk '{print $2}')
+        uptime1=$(echo "${status_prev}" | grep "Uptime" | awk '{print $2}')
+        uptime2=$(echo "${status_cur}" | grep "Uptime" | awk '{print $2}')
         ((req = taccess2 - taccess1))
         ((uptime = uptime2 - uptime1))
         req_psec=$(echo "scale=2; (${req}) / (${uptime})" | bc -l | awk '{printf "%.2f", $0}')
@@ -189,9 +189,9 @@ get_vals() {
         #kb_preq=$(echo "${kb} / ${req}" | bc -l | awk '{printf "%.2f", $0}')
         mbs_preq=$(echo "scale=3; (${kb} / ${req}) / 1024" | bc -l | awk '{printf "%.3f", $0}')
         # busy workers
-        wkrs_busy=$(echo "${status_cur}" | head -n8 | tail -n1 | awk '{print $2}')
+        wkrs_busy=$(echo "${status_cur}" | grep "BusyWorkers" | awk '{print $2}')
         # idle workers
-        wkrs_idle=$(echo "${status_cur}" | head -n9 | tail -n1 | awk '{print $2}')
+        wkrs_idle=$(echo "${status_cur}" | grep "IdleWorkers" | awk '{print $2}')
     else                                # if /tmp/server_status not exist - return empty metrics
         req_psec=0
         mbs_psec=0
