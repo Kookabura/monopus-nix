@@ -9,6 +9,9 @@
 # Example
 # ./check_sec_update -w 3 -c 5
 # example output: check_sec_update_ok::sys==debian | sec_update=2;;;;
+#
+# Copyleft TolkIT (team@tolkit.top)
+# author Sergey Egorushkin (SeroEgor@Gmail.com)
 
 while [[ -n "$1" ]]; do
   case $1 in
@@ -21,7 +24,7 @@ while [[ -n "$1" ]]; do
     shift
     ;;
   --help | -H)
-    sed -n '2,11p' "$0" | tr -d '#'
+    sed -n '2,14p' "$0" | tr -d '#'
     exit 3
     ;;
   *)
@@ -42,18 +45,18 @@ if [[ $warn -ge $crit ]]; then
   echo "check_sec_update.warcri"
   exit 2
 fi
-# check name os, now support centos and debian. Count security update avariable in var "sec"
-if [ "$( < /etc/os-release grep -w "ID" | grep -c "centos")" -eq 1 ]; then
+# check name os, now support Centos, Debian and Ubuntu. Count security update avariable in var "sec"
+if [ "$( < /etc/os-release grep -w "ID" | grep -c "centos")" -eq 1 ]; then      #CentOS
     os="centos"
     sec=$(yum --security check-update 2>/dev/null | grep "security" | tail -n 1 | awk '{print $1}')
     if [ "$sec" = "No" ]; then sec=0; fi
-elif [ "$( < /etc/os-release grep -w "ID" | grep -c "debian")" -eq 1 ]; then
+elif [ "$( < /etc/os-release grep -w "ID" | grep -c "debian")" -eq 1 ]; then    #Debian
     os="debian"
     sec=$(apt list --upgradable 2>/dev/null | grep -c "-security")
-elif [ "$( < /etc/os-release grep -w "ID" | grep -c "ubuntu")" -eq 1 ]; then
+elif [ "$( < /etc/os-release grep -w "ID" | grep -c "ubuntu")" -eq 1 ]; then    #Ubuntu
     os="ubuntu"
     sec=$(apt list --upgradable 2>/dev/null | grep -c "-security")
-else
+else                                                                            #not support 
     os=$( < /etc/os-release grep -w "ID" | awk '{print substr($0, 4, length($0)-1)}' | sed 's/"//g')
     echo "check_sec_update.unk::sys=${os}"
     exit 2
