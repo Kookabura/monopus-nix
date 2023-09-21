@@ -47,14 +47,14 @@ if [[ $warn -ge $crit ]]; then
 fi
 # check name os, now support Centos, Debian and Ubuntu. Count security update avariable in var "sec"
 if [ "$( < /etc/os-release grep -w "ID" | grep -c "centos")" -eq 1 ]; then      #CentOS
-    os="centos"
+    os="Centos"
     sec=$(yum --security check-update 2>/dev/null | grep "security" | tail -n 1 | awk '{print $1}')
     if [ "$sec" = "No" ]; then sec=0; fi
 elif [ "$( < /etc/os-release grep -w "ID" | grep -c "debian")" -eq 1 ]; then    #Debian
-    os="debian"
+    os="Debian"
     sec=$(apt list --upgradable 2>/dev/null | grep -c "-security")
 elif [ "$( < /etc/os-release grep -w "ID" | grep -c "ubuntu")" -eq 1 ]; then    #Ubuntu
-    os="ubuntu"
+    os="Ubuntu"
     sec=$(apt list --upgradable 2>/dev/null | grep -c "-security")
 else                                                                            #not support 
     os=$( < /etc/os-release grep -w "ID" | awk '{print substr($0, 4, length($0)-1)}' | sed 's/"//g')
