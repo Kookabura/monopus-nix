@@ -1,0 +1,68 @@
+#!/bin/bash
+#
+# Simple count security update not installed in system
+#
+# Usage: check_sec_update [-w warning] [-c critical] [-H]
+#   -w --warning    number security update above or equal is generate warning
+#   -c --critical   number security update above or equal is generate error
+#   -H --help       output this help
+# Example
+# ./check_sec_update -w 3 -c 5
+# example output: check_sec_update_ok::sys==debian | sec_update=2;;;;
+
+while [[ -n "$1" ]]; do
+  case $1 in
+  --warning | -w)
+    warn=$2
+    shift
+    ;;
+  --critical | -c)
+    crit=$2
+    shift
+    ;;
+  --help | -H)
+    sed -n '2,11p' "$0" | tr -d '#'
+    exit 3
+    ;;
+  *)
+    echo "Unknown argument: $1"
+    exec "$0" --help
+    exit 3
+    ;;
+  esac
+  shift
+done
+
+warn=${warn:=3}
+crit=${crit:=5}
+os=""
+sec=0
+
+if [[ $warn -ge $crit ]]; then
+  echo "check_sec_update.warcri"
+  exit 2
+fi
+# check name os, now support centos and debian. Count security update avariable in var "sec"
+if [ "$( < /etc/os-release grep -w "ID" | grep -c "centos")" -eq 1 ]; then
+    os="centos"
+    sec=$(yum --security check-update 2>/dev/null | grep "security" | tail -n 1 | awk '{print $1}')
+    if [ "$sec" = "No" ]; then sec=0; fi
+elif [ "$( < /etc/os-release grep -w "ID" | grep -c "debian")" -eq 1 ]; then
+    os="debian"
+    sec=$(apt list --upgradable 2>/dev/null | grep -c "-security")
+else
+    os=$( < /etc/os-release grep -w "ID" | awk '{print substr($0, 4, length($0)-1)}' | sed 's/"//g')
+    echo "check_sec_update.unk::sys=${os}"
+    exit 2
+fi
+
+if [ "$sec" -ge "$crit" ]; then
+    echo "check_sec_update.cri::sys=${os} | sec_update=${sec};;;;"
+    exit 2
+elif [ "$sec" -ge "$warn" ]; then
+    echo "check_sec_update.war::sys=${os} | sec_update=${sec};;;;"
+    exit 1;
+else
+    echo "check_sec_update.ok::sys=${os} | sec_update=${sec};;;;"
+    exit 0;
+fi
