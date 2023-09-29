@@ -160,13 +160,18 @@ get_vals() {
 	if [ -s /tmp/${process}_2min_stat.txt ] # if file exist and not empty
     then
         stat="$(cat /tmp/${process}_2min_stat.txt)"
-        cpu_load=$(echo "$stat" | tr "[:space:]" '+')
-        cpu_load=$(echo "$cpu_load" | sed 's/.$//' | bc -l | awk '{printf "%.1f", $0}')
-        if [ "$(echo "$cpu_load > 99" | bc)" -eq 1 ]           # try catch infinity cpu load bug
+        if [ "$(echo "$stat" | wc -l)" -gt 1 ] # if in stat two and above value
         then
-            file=$(date +"%F-%R.cpu-stat")
-            touch /tmp/"${file}"
-            echo "${stat}" > /tmp/"${file}"
+            cpu_load=$(echo "$stat" | tr "[:space:]" '+')
+            cpu_load=$(echo "$cpu_load" | sed 's/.$//' | bc -l | awk '{printf "%.1f", $0}' | sed 's/,/./g')
+            if [ "$(echo "$cpu_load > 99" | bc)" -eq 1 ]           # try catch infinity cpu load bug
+            then
+                file=$(date +"%F-%R.cpu-stat")
+                touch /tmp/"${file}"
+                echo "${stat}" > /tmp/"${file}"
+            fi
+        else                                    # if only one value in stat
+            cpu_load=$(echo "$stat" | awk '{printf "%.1f", $0}' | sed 's/,/./g')
         fi
     fi
     if [ -s /tmp/server_status ]            # if file exist and not empty
