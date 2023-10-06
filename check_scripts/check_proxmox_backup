@@ -5,6 +5,7 @@ if [ "$1" = "-w" ] && [ "$2" -gt "0" ] && [ "$3" = "-c" ] && [ "$4" -gt "0" ]; t
   err=$(pvesh get nodes/"$(hostname)"/tasks | grep vzdump)
   tot_count=$(echo "$err" | grep -c UPID)
   ok_count=$(echo "$err" | grep -c OK)
+  list_err=$(echo "$err" | grep -v OK | awk '{print $2}' | sort -u | tr '\n' ',') #add list err VMs
   joberr_count=$(echo "$err" | grep -c "job errors") 
   if [ "$joberr_count" -gt 0 ]; then                    #if job error - immediately exit
     echo "back_stat_cri::total==$joberr_count|total=$joberr_count;;;;"

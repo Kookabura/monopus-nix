@@ -1,0 +1,12 @@
+#!/bin/bash
+
+#example
+#check_dir_exist /home/promoneyclub/data/www/promoneyclub.s3/
+#example output: check_dir_exist_ok::dir==/home/promoneyclub/data/www/promoneyclub.s3/ | dir=0
+
+if [ -d "$1" ]; then
+  echo "check_dir_exist_ok::dir==${1} | dir=0"
+else
+  echo "check_dir_exist_crit::dir==${1} | dir=1"
+  exit 2
+fi

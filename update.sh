@@ -43,6 +43,20 @@ check_monopus() {
   fi
 }
 
+# Update version monopus in cfg file
+update_ver() {
+  new_ver=$(< ${INST}/monopus.cfg grep "version")
+  new_semi=$(< ${INST}/monopus.cfg grep "timeout")
+  sed -i "s/.*version.*/$new_ver/" $CFG_FN      # update version in cfg 
+  semicol=$(< /etc/monopus.cfg grep "timeout")
+  if [ "${semicol: -1}" != "," ]; then          # if not semicolon in end line consist word 'timeout'
+    sed -i "s/.*timeout.*/$new_semi/" $CFG_FN
+  fi
+  if ! < /etc/monopus.cfg grep "version"; then  # if not version line in cfg
+    sed -i '6a\'"$new_ver"'' $CFG_FN
+  fi
+}
+
 while getopts "hv?" opt; do
   case $opt in
     v) print_version;;
@@ -71,7 +85,9 @@ fi
 echo "Unpack files"
 unzip -tq ${INST}/update.zip && unzip -oq -d $INST ${INST}/update.zip || exit 1
 updatedir=$(ls -xd ${INST}/monopus-*/)
-mv -f "$updatedir"* $INST
+mv -f ${updatedir}libcrypto.so.10 /lib
+mv -f ${updatedir}libssl.so.10 /lib
+mv -f "$updatedir"* ${INST}
 rm -rf  ${INST}/update.zip "$updatedir"
 echo "Adding execute permissions to files"
 if chmod +x -R ${INST};then
@@ -85,6 +101,7 @@ chmod 644 ${INST}/monopus.service ${INST}/monopus.cfg ${INST}/*.md
 check_monopus
 echo "I start the update through a script call: install.sh -u"
 cd ${INST} || echo "Unable to change directory!"
+update_ver
 if bash ${INST}/install.sh -u; then
   echo "Update went without error"
   systemctl daemon-reload
