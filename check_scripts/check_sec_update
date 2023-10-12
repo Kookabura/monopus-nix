@@ -29,7 +29,6 @@ while [[ -n "$1" ]]; do
     ;;
   *)
     echo "Unknown argument: $1"
-    exec "$0" --help
     exit 3
     ;;
   esac
