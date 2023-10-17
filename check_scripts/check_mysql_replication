@@ -24,6 +24,6 @@ if [ "$SlaveIORunning" != "Yes" ]; then
 	state=2
 fi
 
-output="check_mysql_replication::${states_text[$state]} | SBM=$SBM;;;; SlaveSQL=$SlaveSQL;;;; SlaveIO=$SlaveIO;;;;"
+output="check_mysql_replication.${states_text[$state]} | SBM=$SBM;;;; SlaveSQL=$SlaveSQL;;;; SlaveIO=$SlaveIO;;;;"
 echo "${output[@]}"
 exit $state
