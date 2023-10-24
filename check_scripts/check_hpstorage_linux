@@ -1,12 +1,12 @@
 #!/bin/bash
 #
-# Simple check state disk in HP smart system through using ssacli
+# Simple check state disk in HP Smart Storage through using ssacli
 #
-# Usage: check_hpstorage [-H]
+# Usage: check_hpstorage_linux [-H]
 #   -H --help       output this help
 # Example:
-# ./check_sec_update
-# example output: check_sec_update_ok::fault==0 | fault=0;;;;
+# ./check_hpstorage_linux
+# example output: check_hpstorage_linux.ok::fault==0 | fault=0;;;;
 #
 # Copyleft TolkIT (team@tolkit.top)
 # author Sergey Egorushkin (SeroEgor@Gmail.com)
