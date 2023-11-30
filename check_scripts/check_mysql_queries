@@ -1,0 +1,71 @@
+#!/bin/bash
+#
+# Simple check show queries per second and slow queries
+#
+# Usage: check_mysql_queries [-H] [-t] [-u]
+#   -H --help       output this help
+#   -t --time       calculate slow query grather this value in seconds
+#   -u --user       database user under which name slow queries are considered 
+#
+# Copyleft TolkIT (team@tolkit.top)
+# author Sergey Egorushkin (SeroEgor@Gmail.com)
+
+while [[ -n "$1" ]]; do
+    case $1 in
+        --time | -t)
+            slow=$2
+            shift
+            ;;
+        --user | -u)
+            user=$2
+            shift
+            ;;
+        --help | -H)
+            sed -n '2,12p' "$0" | tr -d '#'
+            exit 3
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            exit 3
+            ;;
+    esac
+    shift
+done
+
+user=${user:='bx_clusteruser'}          # user name in database
+slow=${slow:=60}                        # slow query
+empty=1                                 # if set return qps and slow = 0
+queries=$(mysql -e "SHOW STATUS" | grep "Queries" | awk '{print $2}')   #set new values
+time=$(date +"%s")
+
+if [ -s ../tmp/queries ]; then          # if exist tmp-file with previous values
+    data=$(< ../tmp/queries)            # read them
+    old_queries=$(echo "$data" | awk '{print $1}')  # set old values
+    old_time=$(echo "$data" | awk '{print $2}')
+    if [ "$old_queries" -lt "$queries" ]; then  # if old values queries less new calculate qps, else qps = 0
+        empty=0
+        ((q = queries - old_queries))
+        ((t = time - old_time))
+        if [ $t -gt 0 ]; then           # additional check so that the time difference is greater than 0
+            ((qps = q / t))
+        else
+            qps=0
+        fi
+    fi
+else
+    touch ../tmp/queries                # if not exist tmp-file - create them
+fi
+echo "$queries $time" > ../tmp/queries  # record new values in tmp-file
+# calculate slow queries
+list=$(mysql -e "SELECT USER,TIME,INFO FROM INFORMATION_SCHEMA.PROCESSLIST ORDER by time DESC" | tail -n +2)
+long=$(echo "$list" | awk -v t="$slow" -v u="$user" -F"\t" '$2 >= t && $1 == u && $3 != "NULL" {print $1}' | wc -l)
+
+if [ $empty -eq 0 ]; then               # if flag reset return qps and number slow queries
+    output="qps==${qps}__slow==${long}"
+    perfdata="qps=${qps};;;; slow=${long};;;;"
+else                                    # else return 0 both
+    output="qps==0__slow==0"
+    perfdata="qps=0;;;; slow=0;;;;"
+fi
+echo "check_mysql_queries_ok::${output} | ${perfdata}"  # give values to monopus
+exit 0
