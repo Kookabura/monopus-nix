@@ -47,6 +47,8 @@ check_monopus() {
 update_ver() {
   new_ver=$(< ${INST}/monopus.cfg grep "version")
   new_semi=$(< ${INST}/monopus.cfg grep "timeout")
+  mon_dir=$(< ${INST}/monopus.cfg grep "scripts_path" | awk -F"\"" '{print $4}')
+  mon_dir="${mon_dir%/*}"
   sed -i "s/.*version.*/$new_ver/" $CFG_FN      # update version in cfg 
   semicol=$(< /etc/monopus.cfg grep "timeout")
   if [ "${semicol: -1}" != "," ]; then          # if not semicolon in end line consist word 'timeout'
@@ -87,6 +89,7 @@ unzip -tq ${INST}/update.zip && unzip -oq -d $INST ${INST}/update.zip || exit 1
 updatedir=$(ls -xd ${INST}/monopus-*/)
 mv -f ${updatedir}libcrypto.so.10 /lib
 mv -f ${updatedir}libssl.so.10 /lib
+mv -f ${updatedir}/tmp ${mon_dir}
 mv -f "$updatedir"* ${INST}
 rm -rf  ${INST}/update.zip "$updatedir"
 echo "Adding execute permissions to files"
