@@ -89,7 +89,7 @@ unzip -tq ${INST}/update.zip && unzip -oq -d $INST ${INST}/update.zip || exit 1
 updatedir=$(ls -xd ${INST}/monopus-*/)
 mv -f ${updatedir}libcrypto.so.10 /lib
 mv -f ${updatedir}libssl.so.10 /lib
-mv -f ${updatedir}tmp ${mon_dir}
+mkdir -p ${mon_dir}/tmp
 mv -f "$updatedir"* ${INST}
 rm -rf  ${INST}/update.zip "$updatedir"
 echo "Adding execute permissions to files"
