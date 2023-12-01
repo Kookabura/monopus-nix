@@ -64,10 +64,10 @@ long=$(echo "$long" | wc -l)            # num long queries
 
 if [ $empty -eq 0 ]; then               # if flag reset return qps and number slow queries
     output="qps==${qps}__slow==${long}"
-    perfdata="qps=${qps};;;; slow=${long};;;; update=${updt}"
+    perfdata="qps=${qps};;;; slow=${long};;;; update=${updt};;;;"
 else                                    # else return 0 both
     output="qps==0__slow==0"
-    perfdata="qps=0;;;; slow=0;;;;"
+    perfdata="qps=0;;;; slow=0;;;; update=0;;;;"
 fi
 echo "check_mysql_queries_ok::${output} | ${perfdata}"  # give values to monopus
 exit 0
