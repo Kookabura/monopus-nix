@@ -58,11 +58,13 @@ fi
 echo "$queries $time" > ../tmp/queries  # record new values in tmp-file
 # calculate slow queries
 list=$(mysql -e "SELECT USER,TIME,INFO FROM INFORMATION_SCHEMA.PROCESSLIST ORDER by time DESC" | tail -n +2)
-long=$(echo "$list" | awk -v t="$slow" -v u="$user" -F"\t" '$2 >= t && $1 == u && $3 != "NULL" {print $1}' | wc -l)
+long=$(echo "$list" | awk -v t="$slow" -v u="$user" -F"\t" '$2 >= t && $1 == u && $3 != "NULL" {print $3}')
+updt=$(echo "$long" | awk  '$1 == "UPDATE" {print $1}' | wc -l) # num long update
+long=$(echo "$long" | wc -l)            # num long queries
 
 if [ $empty -eq 0 ]; then               # if flag reset return qps and number slow queries
     output="qps==${qps}__slow==${long}"
-    perfdata="qps=${qps};;;; slow=${long};;;;"
+    perfdata="qps=${qps};;;; slow=${long};;;; update=${updt}"
 else                                    # else return 0 both
     output="qps==0__slow==0"
     perfdata="qps=0;;;; slow=0;;;;"
