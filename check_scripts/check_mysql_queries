@@ -60,7 +60,11 @@ echo "$queries $time" > ../tmp/queries  # record new values in tmp-file
 list=$(mysql -e "SELECT USER,TIME,INFO FROM INFORMATION_SCHEMA.PROCESSLIST ORDER by time DESC" | tail -n +2)
 long=$(echo "$list" | awk -v t="$slow" -v u="$user" -F"\t" '$2 >= t && $1 == u && $3 != "NULL" {print $3}')
 updt=$(echo "$long" | awk  '$1 == "UPDATE" {print $1}' | wc -l) # num long update
-long=$(echo "$long" | wc -l)            # num long queries
+if [ -z "$long" ]; then
+    long=0
+else
+    long=$(echo "$long" | wc -l)        # num long queries
+fi
 
 if [ $empty -eq 0 ]; then               # if flag reset return qps and number slow queries
     output="qps==${qps}__slow==${slow}"
