@@ -59,7 +59,7 @@ else
     SLEEP_60=$(echo "$list" | awk '$5 >= 60 && $2 == "bx_clusteruser" && $4 == "Sleep" {printf "%10s", $1}' | wc -l)
 fi
 output="connections==${CONN}"
-perfdata="connections=${CONN};;;;${MAX_CONN};;;;${SLEEPALL};;;;${SLEEP_60};;;;"
+perfdata="connections=${CONN};;;;${MAX_CONN} sleepall=${SLEEPALL};;;; sleep60=${SLEEP_60};;;;"
 if [[ ${CONN} -gt ${CRIT} ]]; then
     echo "check_mysql_connections_critical::${output} | ${perfdata}"
     exit 2
