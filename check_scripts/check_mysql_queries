@@ -63,7 +63,7 @@ updt=$(echo "$long" | awk  '$1 == "UPDATE" {print $1}' | wc -l) # num long updat
 long=$(echo "$long" | wc -l)            # num long queries
 
 if [ $empty -eq 0 ]; then               # if flag reset return qps and number slow queries
-    output="qps==${qps}__slow==${long}"
+    output="qps==${qps}__slow==${slow}"
     perfdata="qps=${qps};;;; slow=${long};;;; update=${updt};;;;"
 else                                    # else return 0 both
     output="qps==0__slow==0"
