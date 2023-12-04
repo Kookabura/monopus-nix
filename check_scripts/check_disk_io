@@ -23,7 +23,7 @@ if [ "$(iostat -d "${DISK}" | wc -l)" -gt 5 ]; then     #fix for debian (newer v
     L=$(echo "($rL * $prR)+($wL * $prW)" | bc -l | awk '{printf "%.2f", $0}') #latency
     ri=$(echo "$stat" | awk '{s += $2} END {printf "%0.2f", s/9}')        #read iops
     wi=$(echo "$stat" | awk '{s += $8} END {printf "%0.2f", s/9}')        #write iops
-    util=$(echo "$stat" | awk '{s += $21} END {printf "%0.1f", s/9}')     #utilization disk in %
+    util=$(echo "$stat" | awk '{s += $NF} END {printf "%0.1f", s/9}')     #utilization disk in %
 else                                                    # older iostat 11 and belowe
     stat=$(iostat -d "${DISK}" -xmt 1 10 | tail -n +7 | sed -n '3~4 p')
     if [ -z "$(iostat -V | grep "11.6")" ]; then
