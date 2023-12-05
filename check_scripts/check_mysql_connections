@@ -56,7 +56,7 @@ else
     CONN=$(echo "$list" | wc -l)
     MAX_CONN=$(mysql -e "show variables like 'max_connections';" | tail -n +2 | awk '{print $2}')
     SLEEPALL=$(echo "$list" | awk '$2 == "bx_clusteruser" && $4 == "Sleep" {print $4}' | wc -l)
-    SLEEP_60=$(echo "$list" | awk '$5 >= 60 && $2 == "bx_clusteruser" && $4 == "Sleep" {printf "%10s", $1}' | wc -l)
+    SLEEP_60=$(echo "$list" | awk '$5 >= 60 && $2 == "bx_clusteruser" && $4 == "Sleep" {printf "%10s\n", $1}' | wc -l)
 fi
 output="connections==${CONN}"
 perfdata="connections=${CONN};;;;${MAX_CONN} sleepall=${SLEEPALL};;;; sleep60=${SLEEP_60};;;;"
