@@ -40,21 +40,21 @@ if [ -s "$FILE" ]; then     #if file exist and greater zero size
             ds=sprintf("%d %d %d %d %d %d",t[1],m[d[2]],d[1],t[2],t[3],t[4])
             ts=mktime(ds)
             if ( s-ts < period ) {
-                if ($10 == "sttaus=500") z++
+                if ($10 == "status=500") z++
                 if ($10 == "status=502") i++
                 if ($10 == "status=504") y++
             }
         }
         END{
-            if (i > 0 || y > 0) {
-                code=2
-                text_code="crit"
-            }
             if (z > 0) {
                 code=1
                 text_code="war"
             }
-            printf "check_nginx_errors.%s::error_504==%s__error_502==%s__error_500==%z | error_504=%s;;;; error_502=%s;;;; error_500=%s;;;;\n",text_code,y,i,z,y,i,z
+            if (i > 0 || y > 0) {
+                code=2
+                text_code="crit"
+            }
+            printf "check_nginx_errors.%s::error_504==%s__error_502==%s__error_500==%s | error_504=%s;;;; error_502=%s;;;; error_500=%s;;;;\n",text_code,y,i,z,y,i,z
             exit code
         }' "$FILE"
 else
