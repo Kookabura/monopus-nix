@@ -67,6 +67,14 @@ else                                                                            
     exit 2
 fi
 
+if [ "$sec" = "error" ] && [ "$os" = "Centos" ]; then
+    echo "check_sec_update.error-centos"
+    exit 2
+elif [ "$sec" = "error" ] && [ "$os" = "Debian" ] || [ "$os" = "Ubuntu" ]; then
+    echo "check_sec_update.error-debubuntu"
+    exit 2
+fi
+
 if [ "$sec" -ge "$crit" ]; then
     echo "check_sec_update.cri::sys==${os}__sec==${sec} | sec_update=${sec};;;;"
     exit 2
