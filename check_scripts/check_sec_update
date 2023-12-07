@@ -48,7 +48,7 @@ fi
 if [ -s ../tmp/update-security ]; then  # if exist tmp-file with previous values
     sec=$(< ../tmp/update-security)     # read them
 else
-    touch ../tmp/queries                # if not exist tmp-file - create them
+    touch ../tmp/update-security        # if not exist tmp-file - create them
 fi
 
 # check name os, now support Centos, Debian and Ubuntu. Count security update avariable in var "sec"

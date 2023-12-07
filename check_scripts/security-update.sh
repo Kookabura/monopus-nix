@@ -6,7 +6,7 @@ if [ "$1" = "Centos" ]; then                # if Centos
     if [ "$sec" = "No" ]; then
         sec=0
     fi
-elif [ $1 = "Debian" ] || [ "$1" = "Ubuntu" ]; then # if Debian or Ubuntu
+elif [ "$1" = "Debian" ] || [ "$1" = "Ubuntu" ]; then # if Debian or Ubuntu
     sec=$(apt list --upgradable 2>/dev/null | grep -c "-security")
 fi
 if [ -z "$sec" ]; then                      # if return empty - error
