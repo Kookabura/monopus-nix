@@ -70,7 +70,7 @@ fi
 if [ "$sec" = "error" ] && [ "$os" = "Centos" ]; then
     echo "check_sec_update.error-centos"
     exit 2
-elif [ "$sec" = "error" ] && [ "$os" = "Debian" ] || [ "$os" = "Ubuntu" ]; then
+elif [ "$sec" = "error" ] && { [ "$os" = "Debian" ] || [ "$os" = "Ubuntu" ]; }; then
     echo "check_sec_update.error-debubuntu"
     exit 2
 fi
