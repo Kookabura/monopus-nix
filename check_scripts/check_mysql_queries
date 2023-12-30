@@ -38,8 +38,8 @@ empty=1                                 # if set return qps and slow = 0
 queries=$(mysql -e "SHOW STATUS" | grep "Queries" | awk '{print $2}')   #set new values
 time=$(date +"%s")
 
-if [ -s ../tmp/queries ]; then          # if exist tmp-file with previous values
-    data=$(< ../tmp/queries)            # read them
+if [ -s /opt/monopus/tmp/queries ]; then          # if exist tmp-file with previous values
+    data=$(< /opt/monopus/tmp/queries)            # read them
     old_queries=$(echo "$data" | awk '{print $1}')  # set old values
     old_time=$(echo "$data" | awk '{print $2}')
     if [ "$old_queries" -lt "$queries" ]; then  # if old values queries less new calculate qps, else qps = 0
@@ -53,7 +53,7 @@ if [ -s ../tmp/queries ]; then          # if exist tmp-file with previous values
         fi
     fi
 else
-    touch ../tmp/queries                # if not exist tmp-file - create them
+    touch /opt/monopus/tmp/queries                # if not exist tmp-file - create them
 fi
 echo "$queries $time" > /opt/monopus/tmp/queries  # record new values in tmp-file
 # calculate slow queries
