@@ -133,23 +133,23 @@ val_wcdiff_req() {
 get_status() {
     if [ "$secure" = 1 ]                            # if https
     then
-        if [ -e /tmp/server_status ];
+        if [ -e ../tmp/server_status ];
         then
-            status_prev=$(cat /tmp/server_status)
+            status_prev=$(cat ../tmp/server_status)
         else
             status_prev=""
         fi
         status_cur=$(wget -qO- --no-check-certificate -t 3 -T "${timeout}" "https://${hostname}:${port}/${status_page}?auto")
     else                                            # if http
-        if [ -e /tmp/server_status ];
+        if [ -e ../tmp/server_status ];
         then
-            status_prev=$(cat /tmp/server_status)
+            status_prev=$(cat ../tmp/server_status)
         else
             status_prev=""
         fi
         status_cur=$(wget -qO- -t 3 -T "${timeout}" "http://${hostname}:${port}/${status_page}?auto")
     fi
-    echo "$status_cur" > /tmp/server_status         # save web statistic apache in temp file
+    echo "$status_cur" > ../tmp/server_status         # save web statistic apache in temp file
 }
 # collection of web server statistics
 get_vals() {
@@ -159,7 +159,7 @@ get_vals() {
     cpu_load=0
 	if [ -s /tmp/${process}_2min_stat.txt ] # if file exist and not empty
     then
-        stat="$(cat /tmp/${process}_2min_stat.txt)"
+        stat="$(cat ../tmp/${process}_2min_stat.txt)"
         if [ "$(echo "$stat" | wc -l)" -gt 1 ] # if in stat two and above value
         then
             cpu_load=$(echo "$stat" | tr "[:space:]" '+')
@@ -167,14 +167,14 @@ get_vals() {
             if [ "$(echo "$cpu_load > 99" | bc)" -eq 1 ]           # try catch infinity cpu load bug
             then
                 file=$(date +"%F-%R.cpu-stat")
-                touch /tmp/"${file}"
-                echo "${stat}" > /tmp/"${file}"
+                touch ../tmp/"${file}"
+                echo "${stat}" > ../tmp/"${file}"
             fi
         else                                    # if only one value in stat
             cpu_load=$(echo "$stat" | awk '{printf "%.1f", $0}' | sed 's/,/./g')
         fi
     fi
-    if [ -s /tmp/server_status ]            # if file exist and not empty
+    if [ -s ../tmp/server_status ]            # if file exist and not empty
     then 
         # requests per second
         taccess1=$(echo "${status_prev}" | head -n1 | awk '{print $3}')
