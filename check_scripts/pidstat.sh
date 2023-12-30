@@ -7,4 +7,4 @@ if [ "$(echo "$pidstat" | head -n1 | wc -w)" -eq 10 ]; then #remove AM or PM fro
 else
   pidstat=$(echo "$pidstat" | awk 'length($8) < 6 {print $7}')
 fi
-echo "$pidstat" > "../tmp/${process}_2min_stat.txt"
+echo "$pidstat" > "/opt/monopus/tmp/${process}_2min_stat.txt"
