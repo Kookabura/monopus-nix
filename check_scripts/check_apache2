@@ -149,7 +149,7 @@ get_status() {
         fi
         status_cur=$(wget -qO- -t 3 -T "${timeout}" "http://${hostname}:${port}/${status_page}?auto")
     fi
-    echo "$status_cur" > ../tmp/server_status         # save web statistic apache in temp file
+    echo "$status_cur" > /opt/monopus/tmp/server_status         # save web statistic apache in temp file
 }
 # collection of web server statistics
 get_vals() {
