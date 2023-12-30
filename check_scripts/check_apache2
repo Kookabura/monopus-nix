@@ -157,7 +157,7 @@ get_vals() {
     sh /opt/monopus/check_scripts/pidstat.sh $process &
     # cpu load calculaite through pidstat in packet sysstat
     cpu_load=0
-	if [ -s /tmp/${process}_2min_stat.txt ] # if file exist and not empty
+	if [ -s ../tmp/${process}_2min_stat.txt ] # if file exist and not empty
     then
         stat="$(cat ../tmp/${process}_2min_stat.txt)"
         if [ "$(echo "$stat" | wc -l)" -gt 1 ] # if in stat two and above value
