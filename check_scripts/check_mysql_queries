@@ -55,7 +55,7 @@ if [ -s ../tmp/queries ]; then          # if exist tmp-file with previous values
 else
     touch ../tmp/queries                # if not exist tmp-file - create them
 fi
-echo "$queries $time" > ../tmp/queries  # record new values in tmp-file
+echo "$queries $time" > /opt/monopus/tmp/queries  # record new values in tmp-file
 # calculate slow queries
 list=$(mysql -e "SELECT USER,TIME,INFO FROM INFORMATION_SCHEMA.PROCESSLIST ORDER by time DESC" | tail -n +2)
 long=$(echo "$list" | awk -v t="$slow" -v u="$user" -F"\t" '$2 >= t && $1 == u && $3 != "NULL" {print $3}')
