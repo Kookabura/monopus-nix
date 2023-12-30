@@ -46,10 +46,10 @@ if [[ $warn -ge $crit ]]; then
   exit 2
 fi
 
-if [ -s ../tmp/update-security ]; then  # if exist tmp-file with previous values
-    sec=$(< ../tmp/update-security)     # read them
+if [ -s /opt/monopus/tmp/update-security ]; then  # if exist tmp-file with previous values
+    sec=$(< /opt/monopus/tmp/update-security)     # read them
 else
-    touch ../tmp/update-security        # if not exist tmp-file - create them
+    touch /opt/monopus/tmp/update-security        # if not exist tmp-file - create them
 fi
 
 # check name os, now support Centos, Debian and Ubuntu. Count security update avariable in var "sec"
