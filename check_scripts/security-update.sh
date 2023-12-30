@@ -12,4 +12,4 @@ fi
 if [ -z "$sec" ]; then                      # if return empty - error
     sec="error"
 fi
-echo "$sec" > ../tmp/update-security        # save result in tmp-file
+echo "$sec" > /opt/monopus/tmp/update-security # save result in tmp-file
