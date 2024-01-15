@@ -43,7 +43,7 @@ fail=$(tac "$LOG" | grep "Out of memory" | awk -v y="$year" -v p="$period" -v os
     split($3, r, ":")                               # split hours, minutes and seconds
     ds=sprintf("%d %d %d %d %d %d", y, m[$1], $2, r[1], r[2], r[3]) # solve full date and time
     ts=mktime(ds)                                   # convert solved date and time in seconds from begin EPOCH
-    if ( s-ts < p ) {                               # if difference current time and parse time in log less with period check
+    if ( s-ts < p  && s-ts > 0) {                   # if difference current time and parse time in log less with period check
       if ( os == "Centos" ) {
         printf "%s, ", $12                          # print fail daemon
       }
