@@ -4,6 +4,95 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.0.7]
+
+- remove output help if parametr is set incorrectly in check_sec_update
+
+- update output for check_mysql_replication
+
+- update version info
+
+- first realise check_hpstorage
+
+- rename check_hpstorage to check_hpstorage_linux
+
+- fix help for check_hpstorage_linux
+
+- add sleep metric in check_mysql_connections
+
+- add tmp dir
+
+- update update.sh for create /tmp dir in monopus dir
+
+- fix error copy tmp in update.sh
+
+- fix erro in update.sh
+
+- fix error update.sh ti create tmp dir
+
+- fix error in update.sh to create tmp dir (definitely the last one)
+
+- first realese check_mysql_queries
+
+- add long update to check_mysql_queries
+
+- fix semicolon in check_mysql_queries
+
+- change output value in check_mysql_queries
+
+- change perfdata format in check_mysql_connections
+
+- add utilization on check_disk_io
+
+- fix error in num long queries for check_mysql_queries
+
+- fix utilization on debian in check_disk_io
+
+- add 500 error in check_nginx_error
+
+- align in file check_nginx_errors
+
+- fix error calculate sleep more 60sec in check_mysql_connections
+
+- fix error in calculate errors 50x for check_nginx_errors
+
+- Removed the dependency on the speed of checking security updates in check_sec_update
+
+- add case if packet manager in error
+
+- fix errors in check_sec_update
+
+- fix logical error in check_sec_update
+
+- Total rewrite check_oom_killer
+
+- Correction of storage of temporary files to the directory of monopos for check_apache2 and pidstat.sh
+
+- update path to security-update.sh in check_sec_update
+
+- update path in pidstat.sh
+
+- update path in pidstat.sh
+
+- fix error check_apache2
+
+- fix error in check_apache2
+
+- fix path in security-update.sh
+
+- fix path check_mysql_queries
+
+- apsolute path in check_sec_update
+
+- absolute path tmp-file in check_mysql_queries
+
+- absolute path to tmp-file in check_apache2
+
+- fix log-error and format log for debian-like system
+
+- fix logic error in check_oom_killer
+
+
 ## [1.0.6]
 
 ### Changed
@@ -182,5 +271,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ## [1.0.1] - 2022-07-25
  
 ## [1.0.0-beta] - 2021-02-09
+
 
 
