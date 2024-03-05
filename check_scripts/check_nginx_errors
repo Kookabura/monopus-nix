@@ -2,70 +2,73 @@
 FILE=/var/log/nginx/access.log
 
 while getopts ":p:" opt; do
-  case $opt in
-    p) period="${OPTARG}"
-    ;;
-    \?) echo "Invalid option -$OPTARG" >&2
-    exit 1
-    ;;
-  esac
+    case $opt in
+        p) period="${OPTARG}"
+        ;;
+        \?) echo "Invalid option -$OPTARG" >&2
+        exit 1
+        ;;
+    esac
 
-  case $OPTARG in
-    -*) echo "Option $opt needs a valid argument"
-    exit 1
-    ;;
-  esac
+    case $OPTARG in
+        -*) echo "Option $opt needs a valid argument"
+        exit 1
+        ;;
+    esac
 done
 
-if [ -s "$FILE" ]             #if file exist and greater zero size
-then
-  # Set default period value
-  if [ -z "$period" ]
-  then
-    period=300
-  fi
-  #count 502 and 504 errors in log file for a period last 300 seconds (default)
-  gawk -vtext_code=ok -vperiod="$period" '
-    BEGIN{
-      m["Jan"]=1;m["Feb"]=2;m["Mar"]=3;m["Apr"]=4;  m["May"]=5;  m["Jun"]=6
-      m["Jul"]=7;m["Aug"]=8;m["Sep"]=9;m["Oct"]=10; m["Nov"]=11; m["Dec"]=12
-      code=0
-      i=0
-      y=0
-      s=systime()
-    }
-    / upstream_status=(504|502) /{
-      sub(/\[/,"",$4)
-      split($4,d,"/")
-      split(d[3],t,":")
-      ds=sprintf("%d %d %d %d %d %d",t[1],m[d[2]],d[1],t[2],t[3],t[4])
-      ts=mktime(ds)
-      if ( s-ts < period ) {
-        if ($10 == "status=502") i++
-        if ($10 == "status=504") y++
-      }
-    }
-    END{
-      if (i > 0 || y > 0) {
-        code=2
-        text_code="crit"
-      }
-      printf "check_nginx_errors.%s::error_504==%s__error_502==%s | error_504=%s;;;; error_502=%s;;;;\n",text_code,y,i,y,i
-      exit code
-    }' "$FILE"
-else
-  if [ -e "$FILE" ]         #if file exist, but zero size
-  then
-    # Compute defference date modification file and current time in hours
-    diff=$(( ( $(date +%s) - $(stat -c '%Y' "$FILE") ) / 3600 ))
-
-    if [ $diff -gt 24 ]     #if file zero size and date modification older than 24 hours - error
-    then
-      printf "check_nginx_errors.crit::error_504==0__error_502==0 | error_504=0;;;; error_502=0;;;;"
-      exit 2
+if [ -s "$FILE" ]; then     #if file exist and greater zero size
+    # Set default period value
+    if [ -z "$period" ]; then
+        period=300
     fi
+    #count 502 and 504 errors in log file for a period last 300 seconds (default)
+    gawk -vtext_code=ok -vperiod="$period" '
+        BEGIN{
+            m["Jan"]=1;m["Feb"]=2;m["Mar"]=3;m["Apr"]=4;  m["May"]=5;  m["Jun"]=6
+            m["Jul"]=7;m["Aug"]=8;m["Sep"]=9;m["Oct"]=10; m["Nov"]=11; m["Dec"]=12
+            code=0
+            i=0
+            y=0
+            z=0
+            s=systime()
+        }
+        / upstream_status=(504|502|500) /{
+            sub(/\[/,"",$4)
+            split($4,d,"/")
+            split(d[3],t,":")
+            ds=sprintf("%d %d %d %d %d %d",t[1],m[d[2]],d[1],t[2],t[3],t[4])
+            ts=mktime(ds)
+            if ( s-ts < period ) {
+                if ($10 == "status=500") z++
+                if ($10 == "status=502") i++
+                if ($10 == "status=504") y++
+            }
+        }
+        END{
+            if (z > 0) {
+                code=1
+                text_code="war"
+            }
+            if (i > 0 || y > 0) {
+                code=2
+                text_code="crit"
+            }
+            printf "check_nginx_errors.%s::error_504==%s__error_502==%s__error_500==%s | error_504=%s;;;; error_502=%s;;;; error_500=%s;;;;\n",text_code,y,i,z,y,i,z
+            exit code
+        }' "$FILE"
+else
+  if [ -e "$FILE" ]; then   #if file exist, but zero size
+      # Compute defference date modification file and current time in hours
+      diff=$(( ( $(date +%s) - $(stat -c '%Y' "$FILE") ) / 3600 ))
+
+      if [ $diff -gt 24 ]   #if file zero size and date modification older than 24 hours - error
+      then
+          printf "check_nginx_errors.crit::error_504==0__error_502==0__error_500==0 | error_504=0;;;; error_502=0;;;; error_500=0;;;;"
+          exit 2
+      fi
   else                      #else file not exist - error
-    printf "check_nginx_errors.crit::error_504==0__error_502==0 | error_504=0;;;; error_502=0;;;;"
-    exit 2
+      printf "check_nginx_errors.crit::error_504==0__error_502==0__error_500==0 | error_504=0;;;; error_502=0;;;; error_500=0;;;;"
+      exit 2
   fi
 fi

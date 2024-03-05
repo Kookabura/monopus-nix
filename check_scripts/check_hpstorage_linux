@@ -1,0 +1,48 @@
+#!/bin/bash
+#
+# Simple check state disk in HP Smart Storage through using ssacli
+#
+# Usage: check_hpstorage_linux [-H]
+#   -H --help       output this help
+# Example:
+# ./check_hpstorage_linux
+# example output: check_hpstorage_linux.ok::fault==0 | fault=0;;;;
+#
+# Copyleft TolkIT (team@tolkit.top)
+# author Sergey Egorushkin (SeroEgor@Gmail.com)
+
+while [[ -n "$1" ]]; do
+    case $1 in
+        --help | -H)
+            sed -n '2,12p' "$0" | tr -d '#'
+            exit 3
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            exit 3
+            ;;
+    esac
+    #shift
+done
+
+fault=3;  # default value
+
+# check exist command ssacli from HP Smart Storage Admin CLI (ssacli) https://gist.github.com/mrpeardotnet/a9ce41da99936c0175600f484fa20d03
+if [ "$(command -v ssacli | wc -l)" -eq 0 ]; then
+    echo "check_hpstorage_linux.program_not_found::fault==0 | fault=0;;;;"
+    exit 2
+else
+    comm=$(ssacli ctrl slot=0 pd all show status)   # ssacli exist, check drive status, raw output 
+    cont=$(echo "$comm" | wc -l)                    # count line output (first and last line is empty)  
+    ((head = cont - 1))                             # cut off the last line
+    ((tail = head - 1))                             # cut off the first line
+    c_OK=$(echo "$comm" | head -n ${head} | tail -n ${tail} | grep -c "OK") # count OK messages
+    ((fault = tail - c_OK))                         # All drives - OK mesages = faults
+    if [ $fault -gt 0 ]; then                       # if faults grather 0 - error, else all right
+        echo "check_hpstorage_linux.cri::fault==${fault} | fault=${fault};;;;"
+        exit 2
+    else
+        echo "check_hpstorage_linux.ok::fault==${fault} | fault=${fault};;;;"
+        exit 0;
+    fi
+fi

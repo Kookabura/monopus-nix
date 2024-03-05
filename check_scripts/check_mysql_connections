@@ -1,69 +1,72 @@
 #!/bin/bash
 
 function usage {
-  echo "$(basename $0) usage: "
-  echo "    -w warning_level Example: 80"
-  echo "    -c critical_level Example: 90"
-  echo "    -u username Example: root"
-  echo "    -p password Example: 1234"
-  echo "    -h host Example: localhost"
-  echo "    --defaults-file <FILE_PATH> "
-  echo ""
-  exit 1
+    echo "$(basename $0) usage: "
+    echo "    -w warning_level Example: 80"
+    echo "    -c critical_level Example: 90"
+    echo "    -u username Example: root"
+    echo "    -p password Example: 1234"
+    echo "    -h host Example: localhost"
+    echo "    --defaults-file <FILE_PATH> "
+    echo ""
+    exit 1
 }
 
 while [[ $# -gt 1 ]]
 do
-  key="$1"
-  case $key in
-    -w)
-    WARN="$2"
+    key="$1"
+    case $key in
+        -w)
+            WARN="$2"
+            shift
+            ;;
+        -c)
+            CRIT="$2"
+            shift
+            ;;
+        -u)
+            USER="$2"
+            shift
+            ;;
+        -p)
+            PASS="$2"
+            shift
+            ;;
+        -h)
+            HOST="$2"
+            shift
+            ;;
+        --defaults-file)
+            FILE="$2"
+            shift
+            ;;
+        *)
+            usage
+            shift
+            ;;
+    esac
     shift
-    ;;
-    -c)
-    CRIT="$2"
-    shift
-    ;;
-    -u)
-    USER="$2"
-    shift
-    ;;
-    -p)
-    PASS="$2"
-    shift
-    ;;
-    -h)
-    HOST="$2"
-    shift
-    ;;
-    --defaults-file)
-    FILE="$2"
-    shift
-    ;;
-    *)
-    usage
-    shift
-    ;;
-  esac
-  shift
 done
 
 [ -n "${WARN}" ] && [ -n "${CRIT}" ] || usage
 if [ -n "${FILE}" ]; then
-  CONNECTIONS=$(echo "show processlist;" | mysql --defaults-file="${FILE}" 2> /dev/null | sed 1,1d  | wc -l)
+    CONN=$(echo "show processlist;" | mysql --defaults-file="${FILE}" 2> /dev/null | sed 1,1d  | wc -l)
 else
-  CONNECTIONS=$(echo "show processlist;" | mysql  2> /dev/null | sed 1,1d | wc -l)
-  MAX_CONNECTIONS=$(echo "show variables like 'max_connections';" | mysql 2> /dev/null | sed 1,1d | awk '{print $2}')
+    list=$(mysql -e "SELECT ID,USER,HOST,COMMAND,TIME FROM INFORMATION_SCHEMA.PROCESSLIST ORDER by time DESC" | tail -n +2)
+    CONN=$(echo "$list" | wc -l)
+    MAX_CONN=$(mysql -e "show variables like 'max_connections';" | tail -n +2 | awk '{print $2}')
+    SLEEPALL=$(echo "$list" | awk '$2 == "bx_clusteruser" && $4 == "Sleep" {print $4}' | wc -l)
+    SLEEP_60=$(echo "$list" | awk '$5 >= 60 && $2 == "bx_clusteruser" && $4 == "Sleep" {printf "%10s\n", $1}' | wc -l)
 fi
-if [[ ${CONNECTIONS} -gt ${CRIT} ]]
-then
-  echo "check_mysql_connections_critical::connections==${CONNECTIONS} | connections=${CONNECTIONS};;;;${MAX_CONNECTIONS};"
-  exit 2
-elif [[ ${CONNECTIONS} -gt ${WARN} ]]
-then
-  echo "check_mysql_connections_warning::connections==${CONNECTIONS} | connections=${CONNECTIONS};;;;;"
-  exit 1
+output="connections==${CONN}"
+perfdata="connections=${CONN};;;;${MAX_CONN} sleepall=${SLEEPALL};;;; sleep60=${SLEEP_60};;;;"
+if [[ ${CONN} -gt ${CRIT} ]]; then
+    echo "check_mysql_connections_critical::${output} | ${perfdata}"
+    exit 2
+elif [[ ${CONN} -gt ${WARN} ]]; then
+    echo "check_mysql_connections_warning::${output} | ${perfdata}"
+    exit 1
 else
-  echo "check_mysql_connections_ok::connections==${CONNECTIONS} | connections=${CONNECTIONS};;;;${MAX_CONNECTIONS};"
-  exit 0
+    echo "check_mysql_connections_ok::${output} | ${perfdata}"
+    exit 0
 fi
