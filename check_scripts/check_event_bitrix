@@ -37,6 +37,8 @@ while [[ -n "$1" ]]; do
     shift
 done
 
+state=3
+states_text=("ok" "warn" "crit" "unknown")                              # texts possable states
 user=${user:='bx_clusteruser'}                                          # user name in database
 treshold=${treshold:=50}                                                # set threshold not success events
 event=${event:='ticket'}                                                # name event
@@ -45,15 +47,15 @@ num=$(mysql -e "USE sitemanager; SELECT COUNT(*) FROM b_event WHERE success_exec
 if [ "$num" -gt "$treshold" ]; then                                     # if number not success events greather threshold, then critical
     output="events==${num}__treshold==${treshold}__namevent==${event}"
     perfdata="events=${num};;;;"
-    flag="crit"
+    state=2
 elif [ "$num" -gt 0 ]; then                                             # if greather 0, then warning
     output="events==${num}__treshold==${treshold}__namevent==${event}"
     perfdata="events=${num};;;;"
-    flag="warn"
+    state=1
 else                                                                    # else ok
     output="events==${num}__treshold==${treshold}__namevent==${event}"
     perfdata="events=${num};;;;"
-    flag="ok"
+    state=0
 fi
-echo "check_event_bitrix_${flag}::${output} | ${perfdata}"              # give values to monopus
-exit 0
+echo "check_event_bitrix_${states_text[$state]}::${output} | ${perfdata}" # give values to monopus
+exit  $state
