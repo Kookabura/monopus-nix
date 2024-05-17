@@ -1,0 +1,93 @@
+#!/bin/bash
+#
+# Check hung process in system, use ps
+#
+# Usage: check_hung_process [-H] [-w] [-c] [-u] [-p]
+#   -H --help       output this help
+#   -w --warning    threshold in minutes exceeding which a warning is generated from the start of the process  
+#   -c --critical   threshold in minutes exceeding which a error is generated from the start of the process 
+#   -u --user       user under which name the process is running 
+#   -p --process    the word by which it is searched in processes (cmd parameter in ps)
+#
+# Copyleft TolkIT (team@tolkit.top)
+# author Sergey Egorushkin (SeroEgor@Gmail.com)
+
+while [[ -n "$1" ]]; do
+    case $1 in
+        --warning | -w)
+            warn=$2
+            shift
+            ;;
+        --critical | -c)
+            crit=$2
+            shift
+            ;;
+        --user | -u)
+            user=$2
+            shift
+            ;;
+        --process | -p)
+            process=$2
+            shift
+            ;;
+        --help | -H)
+            sed -n '2,14p' "$0" | tr -d '#'
+            exit 3
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            exit 3
+            ;;
+    esac
+    shift
+done
+
+state=3
+states_text=("ok" "warn" "crit" "unknown")                              # texts possable states
+user=${user:='bitrix'}                                                  # user under which name the process is running
+((warn=${warn:=720} * 60))                                              # threshold in seconds (12 hour * 60 = 720 minutes * 60 = 43200) exceeded which generates a warning
+((crit=${crit:=1440} * 60 ))                                            # threshold in seconds (24 hour * 60 = 1440 minutes * 60 = 86400) exceeded which generates a error
+process=${process:='cron_events'}                                       # the word by which it is searched in processes (cmd parameter in ps)
+hung_w=$(ps -eo etimes,time,user,pid,cmd | grep -v grep | grep ${process} | awk -v u="$user" -v w="$warn" -v c="$crit" '{
+    split ($2, r, ":");
+    t=sprintf("%d", r[1]*3600+r[2]*60+r[3]);
+    if ($3 == u && $1 > w && $1 < c) {
+        printf "%d\t%d\t%s\t%d\t%s %s %s %s %s %s\n", $1, t, $3, $4, $5, $6, $7, $8, $9, $10
+    }
+}')
+hung_c=$(ps -eo etimes,time,user,pid,cmd | grep -v grep | grep ${process} | awk -v u="$user" -v c="$crit" '{
+    split ($2, r, ":");
+    t=sprintf("%d", r[1]*3600+r[2]*60+r[3]);
+    if ($3 == u && $1 > c) {
+        printf "%d\t%d\t%s\t%d\t%s %s %s %s %s %s\n", $1, t, $3, $4, $5, $6, $7, $8, $9, $10
+    }
+}')
+if [ $(echo "${#hung_c}") -gt 0 ]; then                                 # if exist process exceeding critical treshold
+    count=$(echo "$hung_c" | wc -l)
+    if [ $(echo "${#hung_w}") -gt 0 ]; then                             
+        cwarn=$(echo "$hung_w" | wc -l)                                 # if value hung_w not empty
+    else
+        cwarn=0
+    fi
+    count=$(echo "$count + $cwarn" | bc -l)                             # count hang processes (exceeding waring and critical treshold)
+    pids_c=$(echo "$hung_c" | awk '{print $4}' | awk -v ORS=',' 1 | sed -e 's/.$//g')   # list PIDs processes exceeding critical theshold
+    pids_w=$(echo "$hung_w" | awk '{print $4}' | awk -v ORS=',' 1 | sed -e 's/.$//g')   # list PIDs processes exceeding warning theshold
+    state=2
+    crit=$(echo "scale=2; (${crit} / 3600)" | bc -l | awk '{if ($1 > 1) printf "%.0f", $1; else printf "%.2f", $1}') # return critical theshold in hours
+    output="hungs==${count}__treshold==${crit}__nameprocess==${process}__nameuser=${user}__processpidsc=${pids_c}__processpidsw=${pids_w}"
+    perfdata="hungs=${count};;;;"
+elif [ $(echo "${#hung_w}") -gt 0 ]; then                               # if exist process exceeded warning treshold
+    count=$(echo "$hung_w" | wc -l)
+    pids_w=$(echo "$hung_w" | awk '{print $4}' | awk -v ORS=',' 1 | sed -e 's/.$//g')   # list PIDs processes exceeding warning theshold
+    state=1
+    warn=$(echo "scale=2; (${warn} / 3600)" | bc -l | awk '{if ($1 > 1) printf "%.0f", $1; else printf "%.2f", $1}') # return warning theshold in hours
+    output="hungs==${count}__treshold==${warn}__nameprocess==${process}__nameuser=${user}__processpidsw=${pids_w}"
+    perfdata="hungs=${count};;;;"
+else                                                                    # else ok
+    state=0
+    output="hungs==0__nameprocess==${process}__nameuser=${user}"
+    perfdata="hungs=0;;;;"
+fi 
+
+echo "check_hung_process_${states_text[$state]}::${output} | ${perfdata}" # give values to monopus
+exit  $state
