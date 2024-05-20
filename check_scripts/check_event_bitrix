@@ -19,7 +19,7 @@ while [[ -n "$1" ]]; do
             shift
             ;;
         --warning | -w)
-            critical=$2
+            warning=$2
             shift
             ;;
         --event | -e)
