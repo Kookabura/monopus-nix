@@ -74,18 +74,18 @@ if [ $(echo "${#hung_c}") -gt 0 ]; then                                 # if exi
     pids_w=$(echo "$hung_w" | awk '{print $4}' | awk -v ORS=',' 1 | sed -e 's/.$//g')   # list PIDs processes exceeding warning theshold
     state=2
     crit=$(echo "scale=2; (${crit} / 3600)" | bc -l | awk '{if ($1 > 1) printf "%.0f", $1; else printf "%.2f", $1}') # return critical theshold in hours
-    output="hungs==${count}__treshold==${crit}__nameprocess==${process}__nameuser=${user}__processpidsc=${pids_c}__processpidsw=${pids_w}"
+    output="hungs==${count}__treshold==${crit}__nameprocess==${process}__nameuser==${user}__processpidsc==${pids_c}__processpidsw==${pids_w}"
     perfdata="hungs=${count};;;;"
 elif [ $(echo "${#hung_w}") -gt 0 ]; then                               # if exist process exceeded warning treshold
     count=$(echo "$hung_w" | wc -l)
     pids_w=$(echo "$hung_w" | awk '{print $4}' | awk -v ORS=',' 1 | sed -e 's/.$//g')   # list PIDs processes exceeding warning theshold
     state=1
     warn=$(echo "scale=2; (${warn} / 3600)" | bc -l | awk '{if ($1 > 1) printf "%.0f", $1; else printf "%.2f", $1}') # return warning theshold in hours
-    output="hungs==${count}__treshold==${warn}__nameprocess==${process}__nameuser=${user}__processpidsw=${pids_w}"
+    output="hungs==${count}__treshold==${warn}__nameprocess==${process}__nameuser==${user}__processpidsw==${pids_w}"
     perfdata="hungs=${count};;;;"
 else                                                                    # else ok
     state=0
-    output="hungs==0__nameprocess==${process}__nameuser=${user}"
+    output="hungs==0__nameprocess==${process}__nameuser==${user}"
     perfdata="hungs=0;;;;"
 fi 
 
