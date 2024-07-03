@@ -6,7 +6,7 @@
 #   -H --help       output this help
 #   -c --critical   critical threshold of events that generates the error
 #   -w --warning    warning threshold of events that generates the warning
-#   -e --events     name event, by default 'ticket'
+#   -t --time       interval in minutes, from the time the event was created
 #   -u --user       database user under which name check number events not success
 #
 # Copyleft TolkIT (team@tolkit.top)
@@ -22,8 +22,8 @@ while [[ -n "$1" ]]; do
             warning=$2
             shift
             ;;
-        --event | -e)
-            event=$2
+        --time | -t)
+            interval=$2
             shift
             ;;
         --user | -u)
@@ -47,19 +47,19 @@ states_text=("ok" "warn" "crit" "unknown")                              # texts 
 user=${user:='bx_clusteruser'}                                          # user name in database
 critical=${critical:=50}                                                # set critical threshold not success events
 warning=${warning:=10}                                                  # set warning threshold not success events
-event=${event:='ticket'}                                                # name event
-num=$(mysql -e "USE sitemanager; SELECT COUNT(*) FROM b_event WHERE success_exec = 'N' AND event_name like '${event}%'" | tail -n +2)   # 
+interval=${event:=5}                                                    # interval in minutes, from the time the event was created
+num=$(mysql -e "USE sitemanager; SELECT COUNT(*) FROM b_event WHERE success_exec = 'N' AND DATE_INSERT < DATE_SUB(CURRENT_TIMESTAMP(), INTERVAL ${interval} MINUTE)" | tail -n +2) 
 
 if [ "$num" -gt "$critical" ]; then                                     # if number not success events greather threshold, then critical
-    output="events==${num}__treshold==${critical}__warning==${warning}__namevent==${event}"
+    output="events==${num}__treshold==${critical}__warning==${warning}__interval==${interval}"
     perfdata="events=${num};;;;"
     state=2
 elif [ "$num" -gt "$warning" ]; then                                    # if greather warning treshold, then warning
-    output="events==${num}__treshold==${critical}__warning==${warning}__namevent==${event}"
+    output="events==${num}__treshold==${critical}__warning==${warning}__interval==${interval}"
     perfdata="events=${num};;;;"
     state=1
 else                                                                    # else ok
-    output="events==${num}__treshold==${critical}__warning==${warning}__namevent==${event}"
+    output="events==${num}__treshold==${critical}__warning==${warning}__interval==${interval}"
     perfdata="events=${num};;;;"
     state=0
 fi
