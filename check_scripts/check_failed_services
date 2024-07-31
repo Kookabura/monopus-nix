@@ -17,7 +17,7 @@ IFS=',' read -ra SERVICES <<< "$SERVICES_STR"
 IFS=',' read -ra EXCLUDED <<< "$EXCLUDED_STR"
 if [ -f /bin/systemctl ]; then
   failed=$(/bin/systemctl --failed --no-legend)   #search all daemon with failed state
-  failed=$(echo "$failed" | awk '{print $1}')     #Strip everything after first space in string
+  failed=$(echo "$failed" | awk 'NR==1 {print $1}') #Strip everything after first space in string
   if [ "$failed" == "●" ] || [ "$failed" == "*" ]; then #if contein '●' or '*'
 		failed=$(/bin/systemctl --failed --no-legend | sed '/^[[:space:]]*$/d' | awk '{print $2}')
 	fi
