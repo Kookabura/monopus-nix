@@ -10,14 +10,27 @@
 # Copyleft TolkIT (team@tolkit.top)
 # author Sergey Egorushkin (SeroEgor@Gmail.com)
 
+host=${host:='localhost'}
+user=${user:='bx_clusteruser'}          # user name in database
+pass=${pass:=''}
+slow=${slow:=60}                        # slow query
+
 while [[ -n "$1" ]]; do
     case $1 in
         --time | -t)
             slow=$2
             shift
             ;;
+        --host | -h)
+            host=$2
+            shift
+            ;;
         --user | -u)
             user=$2
+            shift
+            ;;
+        --pass | -p)
+            pass=$2
             shift
             ;;
         --help | -H)
@@ -32,10 +45,8 @@ while [[ -n "$1" ]]; do
     shift
 done
 
-user=${user:='bx_clusteruser'}          # user name in database
-slow=${slow:=60}                        # slow query
 empty=1                                 # if set return qps and slow = 0
-queries=$(mysql -e "SHOW STATUS" | grep "Queries" | awk '{print $2}')   #set new values
+queries=$(mysql -h ${host} -u ${user} -p${pass} -e "SHOW STATUS" 2>&1 | grep "Queries" | awk '{print $2}')   #set new values
 time=$(date +"%s")
 
 if [ -s /opt/monopus/tmp/queries ]; then          # if exist tmp-file with previous values
@@ -57,7 +68,7 @@ else
 fi
 echo "$queries $time" > /opt/monopus/tmp/queries  # record new values in tmp-file
 # calculate slow queries
-list=$(mysql -e "SELECT USER,TIME,INFO FROM INFORMATION_SCHEMA.PROCESSLIST ORDER by time DESC" | tail -n +2)
+list=$(mysql -h ${host} -u ${user} -p${pass} -e "SELECT USER,TIME,INFO FROM INFORMATION_SCHEMA.PROCESSLIST ORDER by time DESC" 2>&1 | tail -n +2)
 long=$(echo "$list" | awk -v t="$slow" -v u="$user" -F"\t" '$2 >= t && $1 == u && $3 != "NULL" {print $3}')
 updt=$(echo "$long" | awk  '$1 == "UPDATE" {print $1}' | wc -l) # num long update
 if [ -z "$long" ]; then
