@@ -46,7 +46,11 @@ while [[ -n "$1" ]]; do
 done
 
 empty=1                                 # if set return qps and slow = 0
-queries=$(mysql -h ${host} -u ${user} -p${pass} -e "SHOW STATUS" 2>&1 | grep "Queries" | awk '{print $2}')   #set new values
+if [ -z "${pass}"]; then
+    queries=$(mysql -e "SHOW STATUS" | grep "Queries" | awk '{print $2}')   #set new values
+else
+    queries=$(mysql -h ${host} -u ${user} -p${pass} -e "SHOW STATUS" 2>&1 | grep "Queries" | awk '{print $2}')   #set new values
+fi
 time=$(date +"%s")
 
 if [ -s /opt/monopus/tmp/queries ]; then          # if exist tmp-file with previous values
@@ -68,9 +72,15 @@ else
 fi
 echo "$queries $time" > /opt/monopus/tmp/queries  # record new values in tmp-file
 # calculate slow queries
-list=$(mysql -h ${host} -u ${user} -p${pass} -e "SELECT USER,TIME,INFO FROM INFORMATION_SCHEMA.PROCESSLIST ORDER by time DESC" 2>&1 | tail -n +2)
-long=$(echo "$list" | awk -v t="$slow" -v u="$user" -F"\t" '$2 >= t && $1 == u && $3 != "NULL" {print $3}')
-updt=$(echo "$long" | awk  '$1 == "UPDATE" {print $1}' | wc -l) # num long update
+if [ -z "${pass}" ]; then
+    list=$(mysql -e "SELECT USER,TIME,INFO FROM INFORMATION_SCHEMA.PROCESSLIST ORDER by time DESC" | tail -n +2)
+    long=$(echo "$list" | awk -v t="$slow" -v u="$user" -F"\t" '$2 >= t && $1 == u && $3 != "NULL" {print $3}')
+    updt=$(echo "$long" | awk  '$1 == "UPDATE" {print $1}' | wc -l) # num long update
+else
+    list=$(mysql -h ${host} -u ${user} -p${pass} -e "SELECT USER,TIME,INFO FROM INFORMATION_SCHEMA.PROCESSLIST ORDER by time DESC" 2>&1 | tail -n +2)
+    long=$(echo "$list" | awk -v t="$slow" -v u="$user" -F"\t" '$2 >= t && $1 == u && $3 != "NULL" {print $3}')
+    updt=$(echo "$long" | awk  '$1 == "UPDATE" {print $1}' | wc -l) # num long update
+fi
 if [ -z "$long" ]; then
     long=0
 else
