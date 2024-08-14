@@ -33,7 +33,7 @@ do
             shift
             ;;
         -p)
-            PASS="$2"
+            PASS="$(< $2)"
             shift
             ;;
         -h)
@@ -55,6 +55,12 @@ done
 [ -n "${WARN}" ] && [ -n "${CRIT}" ] || usage
 if [ -n "${FILE}" ]; then
     CONN=$(echo "show processlist;" | mysql --defaults-file="${FILE}" 2> /dev/null | sed 1,1d  | wc -l)
+elif [ -z "${PASS}" ]; then
+    list=$(mysql -e "SELECT ID,USER,HOST,COMMAND,TIME FROM INFORMATION_SCHEMA.PROCESSLIST ORDER by time DESC" | tail -n +2)
+    CONN=$(echo "$list" | wc -l)
+    MAX_CONN=$(mysql -e "show variables like 'max_connections';" | tail -n +2 | awk '{print $2}')
+    SLEEPALL=$(echo "$list" | awk '$2 == "bx_clusteruser" && $4 == "Sleep" {print $4}' | wc -l)
+    SLEEP_60=$(echo "$list" | awk '$5 >= 60 && $2 == "bx_clusteruser" && $4 == "Sleep" {printf "%10s\n", $1}' | wc -l)
 else
     list=$(mysql -h ${HOST} -u ${USER} -p${PASS} -e "SELECT ID,USER,HOST,COMMAND,TIME FROM INFORMATION_SCHEMA.PROCESSLIST ORDER by time DESC" 2>&1 | grep -v "Using a password" | tail -n +2)
     CONN=$(echo "$list" | wc -l)
