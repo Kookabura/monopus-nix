@@ -1,0 +1,65 @@
+#!/bin/bash
+#
+# Simple check show queue beanstalk 
+#
+# Usage: check_beanstalk [-H] [-w] [-c] [-p]
+#   -H --help       output this help
+#   -w --warn       warning treshold messages in queue beanstalk (current-jobs-ready)
+#   -c --crit       critical treshold messages in queue beanstalk
+#   -p --port       polling port beanstalk 
+#
+# Copyleft TolkIT (team@tolkit.top)
+# author Sergey Egorushkin (SeroEgor@Gmail.com)
+
+state=3
+states_text=("ok" "warning" "critical" "unknown")
+warn=${warn:=5}
+crit=${crit:=10}          # 
+port=${port:=11300}
+
+while [[ -n "$1" ]]; do
+    case $1 in
+        --warn | -w)
+            warn=$2
+            shift
+            ;;
+        --crit | -c)
+            crit=$2
+            shift
+            ;;
+        --port | -p)
+            port=$2
+            shift
+            ;;
+        --help | -H)
+            sed -n '2,13p' "$0" | tr -d '#'
+            exit 3
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            exit 3
+            ;;
+    esac
+    shift
+done
+
+reply=$(echo -e "stats-tube checks\r\n" | nc localhost ${port})
+ready=$(echo -e "${reply}" | awk '/current-jobs-ready:/ {print $2}')
+total=$(echo -e "${reply}" | awk '/total-jobs:/ {print $2}')
+delay=$(echo -e "${reply}" | awk '/current-jobs-delayed:/ {print $2}')
+
+if [ $ready -ge $crit ];then
+    output="ready==${ready}__treshold==${crit}"
+    perfdata="ready=${ready};;;; delay=${delay};;;; total=${total};;;;"
+    state=2
+elif [ $ready -ge $warn ];then
+    output="ready==${ready}__treshold==${warn}"
+    perfdata="ready=${ready};;;; delay=${delay};;;; total=${total};;;;"
+    state=1
+else
+    output="ready==${ready}"
+    perfdata="ready=${ready};;;; delay=${delay};;;; total=${total};;;;"
+    state=0
+fi
+echo "check_beanstalk.${states_text[$state]}::${output} | ${perfdata}"
+exit $state
