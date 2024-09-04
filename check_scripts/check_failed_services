@@ -16,10 +16,11 @@ done
 IFS=',' read -ra SERVICES <<< "$SERVICES_STR"
 IFS=',' read -ra EXCLUDED <<< "$EXCLUDED_STR"
 if [ -f /bin/systemctl ]; then
-  failed=$(/bin/systemctl --failed --no-legend)   #search all daemon with failed state
-  failed=$(echo "$failed" | awk 'NR==1 {print $1}') #Strip everything after first space in string
+  failed=$(/bin/systemctl --failed --no-legend | awk 'NR==1 {print $1}')   #search all daemon with failed state, Strip everything after first space in string
   if [ "$failed" == "●" ] || [ "$failed" == "*" ]; then #if contein '●' or '*'
 		failed=$(/bin/systemctl --failed --no-legend | sed '/^[[:space:]]*$/d' | awk '{print $2}')
+  else
+    failed=$(/bin/systemctl --failed --no-legend | awk '{print $1}')
 	fi
   failed=$(echo "$failed" | awk -F.service '{print $1}' | tr -s '\n' ',') #Strip .service suffix and exchange \n to ,
   IFS=',' read -ra FAILED <<< "$failed"           #array names failed deamons
@@ -66,11 +67,11 @@ else
   do
     enum_services="$enum_services, $enum"
   done
-  if [ "$count_failed" -eq 1 ]; then            #if count failed services equal 1, then 
+  #if [ "$count_failed" -eq 1 ]; then            #if count failed services equal 1, then 
     enum_services="${enum_services: 2}"         #remove begin 2 chars
-  else
-    enum_services="${enum_services: 2: -2}"     #remove from begin and end 2 chars
-  fi
+  #else
+    #enum_services="${enum_services: 2}"         #remove from begin and end 2 chars
+  #fi
 fi
 echo "check_failed_services.${states_text[$state]}::services==$enum_services | services=$count_failed;;;"
 exit $state
