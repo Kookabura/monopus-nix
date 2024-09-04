@@ -57,7 +57,7 @@ elif [ $ready -ge $warn ];then
     perfdata="ready=${ready};;;; delay=${delay};;;; total=${total};;;;"
     state=1
 else
-    output="ready==${ready}"
+    output="ready==${ready}__treshold==${warn}"
     perfdata="ready=${ready};;;; delay=${delay};;;; total=${total};;;;"
     state=0
 fi
