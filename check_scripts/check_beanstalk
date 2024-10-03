@@ -48,17 +48,16 @@ ready=$(echo -e "${reply}" | awk '/current-jobs-ready:/ {print $2}')
 total=$(echo -e "${reply}" | awk '/total-jobs:/ {print $2}')
 delay=$(echo -e "${reply}" | awk '/current-jobs-delayed:/ {print $2}')
 
+perfdata="ready=${ready};;;; delay=${delay};;;; total=${total};;;;"
+
 if [ $ready -ge $crit ];then
     output="ready==${ready}__treshold==${crit}"
-    perfdata="ready=${ready};;;; delay=${delay};;;; total=${total};;;;"
     state=2
 elif [ $ready -ge $warn ];then
     output="ready==${ready}__treshold==${warn}"
-    perfdata="ready=${ready};;;; delay=${delay};;;; total=${total};;;;"
     state=1
 else
     output="ready==${ready}__treshold==${warn}"
-    perfdata="ready=${ready};;;; delay=${delay};;;; total=${total};;;;"
     state=0
 fi
 echo "check_beanstalk.${states_text[$state]}::${output} | ${perfdata}"

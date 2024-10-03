@@ -84,7 +84,11 @@ else
   used=$(awk 'BEGIN { printf("%0.1f", ("'$bytes'" * 100) / "'$limit_maxbytes'")}')
 fi
 
-hit_ratio=$(awk 'BEGIN { printf("%0.2f", ("'$get_hits'" / ("'$get_misses'" + "'$get_hits'")) * 100) }')
+if [[ "$get_hits" -eq 0 ]]; then
+  hit_ratio=0
+else
+  hit_ratio=$(awk 'BEGIN { printf("%0.2f", ("'$get_hits'" / ("'$get_misses'" + "'$get_hits'")) * 100) }')
+fi
 limit_gb=$(awk 'BEGIN { printf("%0.1f", "'$limit_maxbytes'" / 1024 / 1024 / 1024) }')
 status="tot_mem==${limit_gb}__used_mem==${used}__tot_con==${limit_conn}__cur_con==${cur_conn}__hit_rt==${hit_ratio}"
 perfdata="TOT_MEM=${limit_gb};;;; USED_MEM=${used};;;; TOTAL_CONN=${limit_conn};;;; CUR_CONN=${cur_conn};;;; HIT_RATE=${hit_ratio}"
