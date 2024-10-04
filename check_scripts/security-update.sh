@@ -3,7 +3,7 @@
 sec=0
 if [ "$1" = "Centos" ]; then                # if Centos
     sec=$(yum --security check-update 2>/dev/null | grep "security" | tail -n 1 | awk '{print $1}')
-    if [ "$sec" = "No" ]; then
+    if [ "$sec" = "No" ] || [ -z "$sec" ]; then
         sec=0
     fi
 elif [ "$1" = "Debian" ] || [ "$1" = "Ubuntu" ]; then # if Debian or Ubuntu
