@@ -153,11 +153,11 @@ get_status() {
 }
 # collection of web server statistics
 get_vals() {
-    # save cpu statistic for pidstat in tmp 
+    # save cpu statistic for pidstat in tmp
     sh /opt/monopus/check_scripts/pidstat.sh $process &
     # cpu load calculaite through pidstat in packet sysstat
     cpu_load=0
-	if [ -s /opt/monopus/tmp/${process}_2min_stat.txt ] # if file exist and not empty
+        if [ -s /opt/monopus/tmp/${process}_2min_stat.txt ] # if file exist and not empty
     then
         stat="$(cat /opt/monopus/tmp/${process}_2min_stat.txt)"
         if [ "$(echo "$stat" | wc -l)" -gt 1 ] # if in stat two and above value
@@ -175,18 +175,18 @@ get_vals() {
         fi
     fi
     if [ -s /opt/monopus/tmp/server_status ]            # if file exist and not empty
-    then 
+    then
         # requests per second
-        taccess1=$(echo "${status_prev}" | head -n1 | awk '{print $3}')
-        taccess2=$(echo "${status_cur}" | head -n1 | awk '{print $3}')
-        uptime1=$(echo "${status_prev}" | grep "Uptime" | awk '{print $2}')
-        uptime2=$(echo "${status_cur}" | grep "Uptime" | awk '{print $2}')
+        taccess1=$(echo "${status_prev}" | awk '/^Total Accesses:/ {print $3}')
+        taccess2=$(echo "${status_cur}" | awk '/^Total Accesses:/ {print $3}')
+        uptime1=$(echo "${status_prev}" | awk '/^Uptime:/ {print $2}')
+        uptime2=$(echo "${status_cur}" | awk '/^Uptime:/ {print $2}')
         ((req = taccess2 - taccess1))
         ((uptime = uptime2 - uptime1))
         req_psec=$(echo "scale=2; (${req}) / (${uptime})" | bc -l | awk '{printf "%.2f", $0}')
         # bytes per second
-        kb1=$(echo "${status_prev}" | head -n2 | tail -n1 | awk '{print $3}')
-        kb2=$(echo "${status_cur}" | head -n2 | tail -n1 | awk '{print $3}')
+        kb1=$(echo "${status_prev}" | awk '/^Total kBytes:/ {print $3}')
+        kb2=$(echo "${status_cur}" | awk '/^Total kBytes:/ {print $3}')
         ((kb = kb2 - kb1))
         #kb_psec=$(echo "scale=2; ${kb} / ${uptime}" | bc -l | awk '{printf "%.2f", $0}')
         mbs_psec=$(echo "scale=3; (${kb} / ${uptime}) / 1024" | bc -l | awk '{printf "%.3f", $0}')
@@ -211,7 +211,7 @@ do_output() {
 }
 
 do_perfdata() {
-    perfdata="cpu_load=${cpu_load};;;; req_psec=${req_psec};;;; workers_busy=${wkrs_busy};;;; workers_idle=${wkrs_idle};;;; bytes_psec=${mbs_psec};;;; bytes_preq=${mbs_preq};;;;" 
+    perfdata="cpu_load=${cpu_load};;;; req_psec=${req_psec};;;; workers_busy=${wkrs_busy};;;; workers_idle=${wkrs_idle};;;; bytes_psec=${mbs_psec};;;; bytes_preq=${mbs_preq};;;;"
 }
 
 # Check value warnings/criticals thresholds
