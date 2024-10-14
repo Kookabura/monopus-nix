@@ -5,6 +5,7 @@
 #example output: check_redis_doctor_ok::success==0__message=="Hi Sam, I can't find any memory issue in your instance. I can only account for what occurs on this base." | success=0
 
 exit=0
+success=0
 redis-cli memory doctor | grep -q "I can't find any memory issue" && success=0 || success=1 
 if [ "${success}" -eq 0 ]; then
   message=$(redis-cli memory doctor)
