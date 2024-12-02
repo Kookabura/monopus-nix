@@ -21,18 +21,15 @@ crit=${crit:=7}
 count_min=${t:=20}
 path_to_log=${path_to_log:="/var/log/secure"}
 
-declare -A OS
-OS["CENTOS"]="/var/log/secure"
-OS["UBUNTU"]="/var/log/auth.log"
-OS["DEBIAN"]="/var/log/auth.log"
-# Your OS could be here
-
-# Search distribution name OS and add path to log
-RELISE=`cat /etc/*-release| tr "\n" " "`
-
-for name in ${!OS[@]}; do
-        echo cat /etc/*-release| tr "\n" " " | grep -i -q $name && path_to_log=${OS[$name]}
-done
+if [ "$( < /etc/os-release grep -w "ID" | grep -c "centos")" -eq 1 ]; then      #CentOS
+    path_to_log="/var/log/secure"
+elif [ "$( < /etc/os-release grep -w "ID" | grep -c "debian")" -eq 1 ]; then    #Debian
+    path_to_log="/var/log/auth.log"
+elif [ "$( < /etc/os-release grep -w "ID" | grep -c "ubuntu")" -eq 1 ]; then    #Ubuntu
+    path_to_log="/var/log/auth.log"
+else                                                                            #not support 
+    os=$( < /etc/os-release grep -w "ID" | awk '{print substr($0, 4, length($0)-1)}' | sed 's/"//g')
+fi
 
 # Check add key
 while [[ -n "$1" ]]; do
@@ -68,7 +65,7 @@ done
 
 # Check exist file
 if [ ! -e $path_to_log ]; then
-    echo "File does not exist -> ${path_to_log}"
+    echo "File does not exist -> ${path_to_log}; distib -> ${os}"
     exit 3
 fi
 
