@@ -65,8 +65,8 @@ done
 
 # Check exist file
 if [ ! -e $path_to_log ]; then
-    echo "File does not exist -> ${path_to_log}; distib -> ${os}"
-    exit 3
+    echo "check_bruteforce.nofile==${path_to_log}__distib==${os} | failed_login=0;;;;"
+    exit ${state}
 fi
 
 # Extract Failed password from log file
