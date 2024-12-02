@@ -1,0 +1,107 @@
+#!/bin/bash
+
+# Function to show usage information
+function usage {
+    echo "$(basename $0) usage: "
+    echo "    -w|--warning warning_threshold Example: 10"
+    echo "    -c|--critical error_threshold Example: 5"
+    echo "    -h host Example: localhost"
+    echo "    --defaults-file <FILE_PATH>"
+    echo "    --socket <SOCKET_PATH>"
+    echo ""
+    exit 1
+}
+
+# Default values
+HOST=${HOST:='127.0.0.1'}  # Using 127.0.0.1 instead of localhost to avoid socket issues
+WARNING_THRESHOLD=${WARNING_THRESHOLD:=10}  # Default warning threshold
+ERROR_THRESHOLD=${ERROR_THRESHOLD:=5}  # Default error threshold
+SOCKET=${SOCKET:='/var/lib/mysql/mysql.sock'}  # Default socket path
+
+# Get the current OS
+current_os=$(uname -s)
+
+# Check if the current OS is Linux
+if [[ "$current_os" != "Linux" ]]; then
+    echo "check_mysql_opentables_error::Unsupported operating system: ${current_os}. This script only supports Linux. Exiting."
+    exit 3
+fi
+
+# Parsing command-line arguments
+while [[ $# -gt 0 ]]
+do
+    key="$1"
+    case $key in
+        -w|--warning)
+            WARNING_THRESHOLD="$2"  # Set the warning threshold
+            shift
+            ;;
+        -c|--critical)
+            ERROR_THRESHOLD="$2"  # Set the critical threshold
+            shift
+            ;;
+        -h)
+            HOST="$2"  # Set the host
+            shift
+            ;;
+        --defaults-file)
+            FILE="$2"  # Use the defaults file for MySQL connection
+            shift
+            ;;
+        --socket)
+            SOCKET="$2"  # Set the path to the MySQL socket
+            shift
+            ;;
+        *)
+            usage  # If an unknown argument is passed, show usage
+            shift
+            ;;
+    esac
+    shift
+done
+
+# Main process function
+main() {
+    local in_use_count
+    states_text=("ok" "warning" "critical" "unknown")
+
+    # Try to connect to MySQL and get the number of open tables
+    if [ -n "${FILE}" ]; then
+        in_use_count=$(mysql --defaults-file="${FILE}" -N -e "show open tables where in_use > 0;" | wc -l)
+    else
+        # Otherwise, use the host or socket specified
+        if [ -S "${SOCKET}" ]; then
+            in_use_count=$(mysql --socket="${SOCKET}" -N -e "show open tables where in_use > 0;" | wc -l)
+        else
+            in_use_count=$(mysql -h ${HOST} -N -e "show open tables where in_use > 0;" | wc -l)
+        fi
+    fi
+
+    # Check if the query was successful
+    if [ $? -ne 0 ]; then
+        # If the query failed, return an error code (exit 3)
+        echo "check_mysql_opentables_error"                     # Error connecting to MySQL or executing query
+        exit 3
+    fi
+
+    # Check if warning threshold is greater than or equal to error threshold (invalid configuration)
+    if (( WARNING_THRESHOLD <= ERROR_THRESHOLD )); then
+        # Output the count even in the invalid configuration
+        echo "check_mysql_opentables_invalid::count==${in_use_count} | count=${in_use_count};;;;"
+        exit 2
+    fi
+
+    # Check the number of in-use tables and generate a status message for Monopus
+    if (( in_use_count >= ERROR_THRESHOLD )); then
+        state=2
+    elif (( in_use_count >= WARNING_THRESHOLD )); then
+        state=1
+    else
+        state=0
+    fi
+    echo "check_mysql_opentables_${states_text[$state]}::count==${in_use_count} | count=${in_use_count};;;;"
+    exit ${state}
+}
+
+# Run the main function
+main
