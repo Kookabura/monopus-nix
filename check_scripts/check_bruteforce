@@ -65,7 +65,7 @@ done
 
 # Check exist file
 if [ ! -e $path_to_log ]; then
-    echo "check_bruteforce.nofile==${path_to_log}__distib==${os} | failed_login=0;;;;"
+    echo "check_bruteforce.nofile::path==${path_to_log}__distib==${os} | failed_login=0;;;;"
     exit ${state}
 fi
 
