@@ -1,0 +1,92 @@
+#!/bin/bash
+#
+# Simple check show error password authorization
+#
+# Usage: check_beanstalk [-H] [-w] [-c] [-t]
+#   -H --help       output this help
+#   -w --warn       warning treshold messages in queue authorization
+#   -c --crit       critical treshold messages in queue authorization
+#   -t --time       time (min) to read log
+#   -l --log        path to log authorization
+#
+# Default setting (warn=3, crit=7, time=20min, log=/var/log/secure)
+# Copyleft TolkIT (team@tolkit.top)
+# author Aleksey Maltsev (lexa.thinker@gmail.com)
+
+# Default Settings
+state=3
+states_text=("ok" "warning" "critical" "unknown")
+warn=${warn:=3}
+crit=${crit:=7}
+count_min=${t:=20}
+path_to_log=${path_to_log:="/var/log/secure"}
+
+declare -A OS
+OS["CENTOS"]="/var/log/secure"
+OS["UBUNTU"]="/var/log/auth.log"
+OS["DEBIAN"]="/var/log/auth.log"
+# Your OS could be here
+
+# Search distribution name OS and add path to log
+RELISE=`cat /etc/*-release| tr "\n" " "`
+
+for name in ${!OS[@]}; do
+        echo cat /etc/*-release| tr "\n" " " | grep -i -q $name && path_to_log=${OS[$name]}
+done
+
+# Check add key
+while [[ -n "$1" ]]; do
+    case $1 in
+        --warn | -w)
+            warn=$2
+            shift
+            ;;
+        --crit | -c)
+            crit=$2
+            shift
+            ;;
+        --time | -t)
+            t=$2
+            shift
+            ;;
+        --log | -l)
+            path_to_log=$2
+            shift
+            ;;
+
+        --help | -H)
+            sed -n "2,14p" "$0" | tr -d '#'
+            exit 3
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            exit 3
+            ;;
+    esac
+    shift
+done
+
+# Check exist file
+if [ ! -e $path_to_log ]; then
+    echo "File does not exist -> ${path_to_log}"
+    exit 3
+fi
+
+# Extract Failed password from log file
+count=$(tail -n ${count_min} ${path_to_log} | grep "Failed password" | wc -l)
+
+perfdata="failed_login=${count};;;;"
+
+if [ $count -ge $crit ]; then
+    output="failed_login==${count}__treshold==${crit}"
+    state=2
+elif [ $count -ge $warn ]; then
+    output="failed_login==${count}__treshold==${warn}"
+    state=1
+else
+    output="failed_login==${count}__treshold==${warn}"
+    state=0
+fi
+
+echo "check_bruteforce.${states_text[$state]}::${output} | ${perfdata}"
+exit ${state}
