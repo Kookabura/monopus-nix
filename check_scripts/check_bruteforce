@@ -78,13 +78,13 @@ count=$(tail -n ${count_min} ${path_to_log} | grep "Failed password" | wc -l)
 perfdata="failed_login=${count};;;;"
 
 if [ $count -ge $crit ]; then
-    output="failed_login==${count}__treshold==${crit}"
+    output="failed_login==${count}__treshold==${crit}__time==${count_min}"
     state=2
 elif [ $count -ge $warn ]; then
-    output="failed_login==${count}__treshold==${warn}"
+    output="failed_login==${count}__treshold==${warn}__time==${count_min}"
     state=1
 else
-    output="failed_login==${count}__treshold==${warn}"
+    output="failed_login==${count}__treshold==${warn}__time==${count_min}"
     state=0
 fi
 
