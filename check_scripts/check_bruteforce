@@ -20,7 +20,7 @@ current_time=$(date +%s)
 states_text=("ok" "warning" "critical" "unknown")
 warn=${warn:=50}
 crit=${crit:=70}
-count_min=${t:=5}
+count_min=${count_min:=5}
 log_file=${log_file:="/var/log/secure"}
 
 declare -A OS
@@ -85,19 +85,16 @@ count=$(awk -v start_time="$START_TIME" '
     END { print count }
 ' "$log_file")
 
-
-echo $count
-
 perfdata="failed_login=${count};;;;"
 
 if [ $count -ge $crit ]; then
-    output="failed_login==${count}__treshold==${crit}"
+    output="failed_login==${count}__treshold==${crit}__time==${count_min}"
     state=2
 elif [ $count -ge $warn ]; then
-    output="failed_login==${count}__treshold==${warn}"
+    output="failed_login==${count}__treshold==${warn}__time==${count_min}"
     state=1
 else
-    output="failed_login==${count}__treshold==${warn}"
+    output="failed_login==${count}__treshold==${warn}__time==${count_min}"
     state=0
 fi
 
