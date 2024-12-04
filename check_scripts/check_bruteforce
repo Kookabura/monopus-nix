@@ -9,27 +9,35 @@
 #   -t --time       time (min) to read log
 #   -l --log        path to log authorization
 #
-# Default setting (warn=3, crit=7, time=20min, log=/var/log/secure)
+# Default setting (warn=50, crit=70, time=5, log=/var/log/secure)
+# WARNING: execution time increases from the specified time
 # Copyleft TolkIT (team@tolkit.top)
 # author Aleksey Maltsev (lexa.thinker@gmail.com)
 
 # Default Settings
 state=3
+current_time=$(date +%s)
 states_text=("ok" "warning" "critical" "unknown")
-warn=${warn:=3}
-crit=${crit:=7}
-count_min=${t:=20}
-path_to_log=${path_to_log:="/var/log/secure"}
+warn=${warn:=50}
+crit=${crit:=70}
+count_min=${t:=5}
+log_file=${log_file:="/var/log/secure"}
 
-if [ "$( < /etc/os-release grep -w "ID" | grep -c "centos")" -eq 1 ]; then      #CentOS
-    path_to_log="/var/log/secure"
-elif [ "$( < /etc/os-release grep -w "ID" | grep -c "debian")" -eq 1 ]; then    #Debian
-    path_to_log="/var/log/auth.log"
-elif [ "$( < /etc/os-release grep -w "ID" | grep -c "ubuntu")" -eq 1 ]; then    #Ubuntu
-    path_to_log="/var/log/auth.log"
-else                                                                            #not support 
-    os=$( < /etc/os-release grep -w "ID" | awk '{print substr($0, 4, length($0)-1)}' | sed 's/"//g')
-fi
+declare -A OS
+OS["centos"]="/var/log/secure"
+OS["ubuntu"]="/var/log/auth.log"
+OS["debian"]="/var/log/auth.log"
+# Your OS could be here
+
+# Search distribution name OS and add path to log
+for name in ${!OS[@]}; do
+    if [ "$( < /etc/os-release grep -w "ID" | grep -c "${name}")" -eq 1 ]; then
+        log_file=${OS[$name]}
+        check_support_os=$name
+    else
+        check_support_os=$( < /etc/os-release grep -w "ID" | awk '{print substr($0, 4, length($0)-1)}' | sed 's/"//g')
+    fi
+done
 
 # Check add key
 while [[ -n "$1" ]]; do
@@ -43,16 +51,16 @@ while [[ -n "$1" ]]; do
             shift
             ;;
         --time | -t)
-            t=$2
+            count_min=$2
             shift
             ;;
         --log | -l)
-            path_to_log=$2
+            log_file=$2
             shift
             ;;
 
         --help | -H)
-            sed -n "2,14p" "$0" | tr -d '#'
+            sed -n "2,15p" "$0" | tr -d '#'
             exit 3
             ;;
         *)
@@ -64,26 +72,34 @@ while [[ -n "$1" ]]; do
 done
 
 # Check exist file
-if [ ! -e $path_to_log ]; then
-    echo "check_bruteforce.nofile::path==${path_to_log}__distib==${os} | failed_login=0;;;;"
-    exit ${state}
+if [ ! -e $log_file ]; then
+    echo "check_bruteforce.nofile::path==${log_file}__distib==${check_support_os} | failed_login=0;;;;"
+    exit 3
 fi
 
 # Extract Failed password from log file
-count=$(tail -n ${count_min} ${path_to_log} | grep "Failed password" | wc -l)
+START_TIME=$(date --date="${count_min} minutes ago" "+%b %_d %H:%M")
+count=$(awk -v start_time="$START_TIME" '
+    BEGIN { count = 0 }
+    $0 ~ start_time, 0 {if ($0 ~ /Failed password/) count++ }
+    END { print count }
+' "$log_file")
+
+
+echo $count
 
 perfdata="failed_login=${count};;;;"
 
 if [ $count -ge $crit ]; then
-    output="failed_login==${count}__treshold==${crit}__time==${count_min}"
+    output="failed_login==${count}__treshold==${crit}"
     state=2
 elif [ $count -ge $warn ]; then
-    output="failed_login==${count}__treshold==${warn}__time==${count_min}"
+    output="failed_login==${count}__treshold==${warn}"
     state=1
 else
-    output="failed_login==${count}__treshold==${warn}__time==${count_min}"
+    output="failed_login==${count}__treshold==${warn}"
     state=0
 fi
 
 echo "check_bruteforce.${states_text[$state]}::${output} | ${perfdata}"
-exit ${state}
+exit $state
