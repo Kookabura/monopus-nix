@@ -9,7 +9,7 @@
 #   -t --time       time (min) to read log
 #   -l --log        path to log authorization
 #
-# Default setting (warn=50, crit=70, time=5, log=/var/log/secure)
+# Default setting (warn=50, crit=70, time=20, log=/var/log/secure)
 # WARNING: execution time increases from the specified time
 # Copyleft TolkIT (team@tolkit.top)
 # author Aleksey Maltsev (lexa.thinker@gmail.com)
@@ -20,7 +20,7 @@ current_time=$(date +%s)
 states_text=("ok" "warning" "critical" "unknown")
 warn=${warn:=50}
 crit=${crit:=70}
-count_min=${count_min:=5}
+period=${period:=1200}    # minutes in seconds
 log_file=${log_file:="/var/log/secure"}
 
 declare -A OS
@@ -51,7 +51,7 @@ while [[ -n "$1" ]]; do
             shift
             ;;
         --time | -t)
-            count_min=$2
+            (( period = $2 * 60 ))
             shift
             ;;
         --log | -l)
@@ -78,23 +78,50 @@ if [ ! -e $log_file ]; then
 fi
 
 # Extract Failed password from log file
-START_TIME=$(date --date="${count_min} minutes ago" "+%b %_d %H:%M")
-count=$(awk -v start_time="$START_TIME" '
-    BEGIN { count = 0 }
-    $0 ~ start_time, 0 {if ($0 ~ /Failed password/) count++ }
-    END { print count }
-' "$log_file")
+count=$(tac ${log_file} | gawk -v p="${period}" '
+    BEGIN {
+        m["Jan"]=1;m["Feb"]=2;m["Mar"]=3;m["Apr"]=4;  m["May"]=5;  m["Jun"]=6
+        m["Jul"]=7;m["Aug"]=8;m["Sep"]=9;m["Oct"]=10; m["Nov"]=11; m["Dec"]=12
+        count = 0;
+        s=systime();
+        current_year = strftime("%Y", s);
+    }
+    /Failed password/{
+            month = $1;   # Месяц
+            day = $2;     # День
+            t = $3
+
+            split(t, tp, ":");
+            hour = tp[1];    # Часы
+            minute = tp[2];  # Минуты
+            second = tp[3];  # Секунды
+
+            # Формируем строку для mktime
+            ds = sprintf("%d %d %d %d %d %d", current_year, m[month], day, hour, minute, second);
+            ts = mktime(ds)
+            if ( s - ts < p ) {
+                count++
+            } else {
+                next
+            }
+    }
+    END {
+        print count
+    }
+')
 
 perfdata="failed_login=${count};;;;"
 
+(( period = period / 60 ))
+
 if [ $count -ge $crit ]; then
-    output="failed_login==${count}__treshold==${crit}__time==${count_min}"
+    output="failed_login==${count}__treshold==${crit}__time==${period}"
     state=2
 elif [ $count -ge $warn ]; then
-    output="failed_login==${count}__treshold==${warn}__time==${count_min}"
+    output="failed_login==${count}__treshold==${warn}__time==${period}"
     state=1
 else
-    output="failed_login==${count}__treshold==${warn}__time==${count_min}"
+    output="failed_login==${count}__treshold==${warn}__time==${period}"
     state=0
 fi
 
