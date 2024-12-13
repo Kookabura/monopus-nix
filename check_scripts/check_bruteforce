@@ -12,7 +12,7 @@
 # Default setting (warn=50, crit=70, time=20, log=/var/log/secure)
 # WARNING: execution time increases from the specified time
 # Copyleft TolkIT (team@tolkit.top)
-# author Aleksey Maltsev (lexa.thinker@gmail.com)
+# Author Aleksey Maltsev (lexa.thinker@gmail.com)
 
 # Default Settings
 state=3
@@ -87,16 +87,16 @@ count=$(tac ${log_file} | gawk -v p="${period}" '
         current_year = strftime("%Y", s);
     }
     /Failed password/{
-            month = $1;   # Месяц
-            day = $2;     # День
+            month = $1;
+            day = $2;
             t = $3
 
             split(t, tp, ":");
-            hour = tp[1];    # Часы
-            minute = tp[2];  # Минуты
-            second = tp[3];  # Секунды
+            hour = tp[1];
+            minute = tp[2];
+            second = tp[3];
 
-            # Формируем строку для mktime
+            # creating a string for mktime
             ds = sprintf("%d %d %d %d %d %d", current_year, m[month], day, hour, minute, second);
             ts = mktime(ds)
             if ( s - ts < p ) {
