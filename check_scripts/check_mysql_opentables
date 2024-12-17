@@ -79,7 +79,7 @@ main() {
     # Check if the query was successful
     if [ $? -ne 0 ]; then        # If the query failed, return an error code (exit 3)
         state=3
-        echo "check_mysql_opentables_${states_text[$state]::count==0 | count=0;;;;"      # Error connecting to MySQL or executing query
+        echo "check_mysql_opentables_${states_text[$state]}::count==0 | count=0;;;;"      # Error connecting to MySQL or executing query
         exit ${state}
     fi
 
