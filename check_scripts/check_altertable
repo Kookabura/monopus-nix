@@ -80,7 +80,7 @@ main() {
 
     # Check if the query was successful
     if [ $? -ne 0 ]; then
-        echo "check_mysql_altertable_error::detected==0 | count=0"    # error connection to Database
+        echo "check_altertable_error::detected==0 | count=0"    # error connection to Database
         exit 3
     fi
 
@@ -90,20 +90,20 @@ main() {
         # During working hours
         work=1
         if (( alter_count > 0 )); then
-            echo "check_mysql_altertable_critical::detected==${alter_count}__workhours==${work} | count=${alter_count};;;;"
+            echo "check_altertable_critical::detected==${alter_count}__workhours==${work} | count=${alter_count};;;;"
             exit 2
         else
-            echo "check_mysql_altertable_ok::detected==${alter_count}__workhours==${work} | count=0;;;;"
+            echo "check_altertable_ok::detected==${alter_count}__workhours==${work} | count=0;;;;"
             exit 0
         fi
     else
         work=0
         # Outside working hours
         if (( alter_count > 0 )); then
-            echo "check_mysql_altertable_warning::detected==${alter_count}__workhours==${work} | count=${alter_count};;;;"
+            echo "check_altertable_warning::detected==${alter_count}__workhours==${work} | count=${alter_count};;;;"
             exit 1
         else
-            echo "check_mysql_altertable_ok::detected==${alter_count}__workhours==${work} | count=0;;;;"
+            echo "check_altertable_ok::detected==${alter_count}__workhours==${work} | count=0;;;;"
             exit 0
         fi
     fi
