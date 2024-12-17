@@ -13,13 +13,12 @@ function usage {
 }
 
 # Default values
-HOST=${HOST:='127.0.0.1'}  # Using 127.0.0.1 instead of localhost to avoid socket issues
-WARNING_THRESHOLD=${WARNING_THRESHOLD:=5}  # Default warning threshold
-ERROR_THRESHOLD=${ERROR_THRESHOLD:=10}  # Default error threshold
-SOCKET=${SOCKET:='/var/lib/mysql/mysql.sock'}  # Default socket path
+HOST=${HOST:='127.0.0.1'}                       # Using 127.0.0.1 instead of localhost to avoid socket issues
+WARNING_THRESHOLD=${WARNING_THRESHOLD:=5}       # Default warning threshold
+ERROR_THRESHOLD=${ERROR_THRESHOLD:=10}          # Default error threshold
+SOCKET=${SOCKET:='/var/lib/mysql/mysql.sock'}   # Default socket path
 
-# Get the current OS
-current_os=$(uname -s)
+current_os=$(uname -s)                          # Get the current OS
 
 # Check if the current OS is Linux
 if [[ "$current_os" != "Linux" ]]; then
@@ -78,10 +77,10 @@ main() {
     fi
 
     # Check if the query was successful
-    if [ $? -ne 0 ]; then
-        # If the query failed, return an error code (exit 3)
-        echo "check_mysql_opentables_error"                     # Error connecting to MySQL or executing query
-        exit 3
+    if [ $? -ne 0 ]; then        # If the query failed, return an error code (exit 3)
+        state=3
+        echo "check_mysql_opentables_${states_text[$state]::count==0 | count=0;;;;"      # Error connecting to MySQL or executing query
+        exit ${state}
     fi
 
     # Check if warning threshold is greater than or equal to error threshold (invalid configuration)
@@ -99,7 +98,7 @@ main() {
     else
         state=0
     fi
-    echo "check_mysql_opentables_${states_text[$state]}::count==${in_use_count} | count=${in_use_count};;;;"
+    echo "check_mysql_opentables_${states_text[$state]}::crit==${ERROR_THRESHOLD}__warn==${WARNING_THRESHOLD} | count=${in_use_count};;;;"
     exit ${state}
 }
 
