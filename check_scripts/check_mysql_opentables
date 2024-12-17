@@ -14,8 +14,8 @@ function usage {
 
 # Default values
 HOST=${HOST:='127.0.0.1'}  # Using 127.0.0.1 instead of localhost to avoid socket issues
-WARNING_THRESHOLD=${WARNING_THRESHOLD:=10}  # Default warning threshold
-ERROR_THRESHOLD=${ERROR_THRESHOLD:=5}  # Default error threshold
+WARNING_THRESHOLD=${WARNING_THRESHOLD:=5}  # Default warning threshold
+ERROR_THRESHOLD=${ERROR_THRESHOLD:=10}  # Default error threshold
 SOCKET=${SOCKET:='/var/lib/mysql/mysql.sock'}  # Default socket path
 
 # Get the current OS
@@ -23,7 +23,7 @@ current_os=$(uname -s)
 
 # Check if the current OS is Linux
 if [[ "$current_os" != "Linux" ]]; then
-    echo "check_mysql_opentables_error::Unsupported operating system: ${current_os}. This script only supports Linux. Exiting."
+    echo "check_mysql_opentables_nolinux::os==${current_os} | count=0" # not Linux
     exit 3
 fi
 
@@ -85,7 +85,7 @@ main() {
     fi
 
     # Check if warning threshold is greater than or equal to error threshold (invalid configuration)
-    if (( WARNING_THRESHOLD <= ERROR_THRESHOLD )); then
+    if (( WARNING_THRESHOLD >= ERROR_THRESHOLD )); then
         # Output the count even in the invalid configuration
         echo "check_mysql_opentables_invalid::count==${in_use_count} | count=${in_use_count};;;;"
         exit 2
