@@ -80,7 +80,7 @@ main() {
 
     # Check if the query was successful
     if [ $? -ne 0 ]; then
-        echo "check_mysql_altertable_error::Error connecting to MySQL or executing query."
+        echo "check_mysql_altertable_error::detected==0 | count=0"    # error connection to Database
         exit 3
     fi
 
