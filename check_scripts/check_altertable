@@ -1,0 +1,113 @@
+#!/bin/bash
+# Function to show usage information
+function usage {
+    echo "$(basename $0) usage: "
+    echo "    -s start_hour Example: 8"
+    echo "    -e end_hour Example: 20"
+    echo "    -d start_day Example: 1 - monday"
+    echo "    -w end_day Example: 5 - friday"
+    echo "    -h host Example: localhost"
+    echo "    --defaults-file <FILE_PATH> "
+    echo ""
+    exit 1
+}
+
+# Default values
+HOST=${HOST:='localhost'}
+START_HOUR=${START_HOUR:=8}
+END_HOUR=${END_HOUR:=20}
+START_DAY=${START_DAY:=1}
+END_DAY=${END_DAY:=5}
+
+# Parsing command-line arguments
+while [[ $# -gt 0 ]]
+do
+    key="$1"
+    case $key in
+        -s)
+            START_HOUR="$2"  # Set start of working hours
+            shift
+            ;;
+        -e)
+            END_HOUR="$2"    # Set end of working hours
+            shift
+            ;;
+        -d)
+            START_DAY="$2"   # Set start of working day in week
+            shift
+            ;;
+        -w)
+            END_DAY="$2"     # Set end of working day in week
+            shift
+            ;;
+        -h)
+            HOST="$2"  # Set the host
+            shift
+            ;;
+        --defaults-file)
+            FILE="$2"  # Use the defaults file for MySQL connection
+            shift
+            ;;
+        *)
+            usage  # If an unknown argument is passed, show usage
+            shift
+            ;;
+    esac
+    shift
+done
+
+# Main process function
+main() {
+    # Check current time
+    CURRENT_HOUR=$(date +%H)
+    CURRENT_DAY=$(date +%u)  # 1-7, where 1 is Monday, 7 is Sunday
+
+    # Query to find ALTER TABLE events using performance_schema
+    local alter_count
+    if [ -n "${FILE}" ]; then
+        alter_count=$(mysql --defaults-file="${FILE}" -N -e "
+            SELECT COUNT(*) FROM performance_schema.events_statements_current
+            WHERE EVENT_NAME LIKE 'statement/sql/alter_table'
+            AND (SQL_TEXT LIKE 'ALTER TABLE%' AND SQL_TEXT LIKE '%ADD%')
+        " 2>/dev/null)
+    else
+        alter_count=$(mysql -h ${HOST} -N -e "
+            SELECT COUNT(*) FROM performance_schema.events_statements_current
+            WHERE EVENT_NAME LIKE 'statement/sql/alter_table'
+            AND (SQL_TEXT LIKE 'ALTER TABLE%' AND SQL_TEXT LIKE '%ADD%')
+        " 2>/dev/null)
+    fi
+
+    # Check if the query was successful
+    if [ $? -ne 0 ]; then
+        echo "check_mysql_altertable_error::Error connecting to MySQL or executing query."
+        exit 3
+    fi
+
+    # Determine if it's working hours (Mon-Fri, 8 AM to 8 PM)
+    if (( CURRENT_DAY >= START_DAY && CURRENT_DAY <= END_DAY )) && \
+       (( CURRENT_HOUR >= START_HOUR && CURRENT_HOUR < END_HOUR )); then
+        # During working hours
+        work=1
+        if (( alter_count > 0 )); then
+            echo "check_mysql_altertable_critical::detected==${alter_count}__workhours==${work} | count=${alter_count};;;;"
+            exit 2
+        else
+            echo "check_mysql_altertable_ok::detected==${alter_count}__workhours==${work} | count=0;;;;"
+            exit 0
+        fi
+    else
+        work=0
+        # Outside working hours
+        if (( alter_count > 0 )); then
+            echo "check_mysql_altertable_warning::detected==${alter_count}__workhours==${work} | count=${alter_count};;;;"
+            exit 1
+        else
+            echo "check_mysql_altertable_ok::detected==${alter_count}__workhours==${work} | count=0;;;;"
+            exit 0
+        fi
+    fi
+}
+
+# Run the main function
+main
