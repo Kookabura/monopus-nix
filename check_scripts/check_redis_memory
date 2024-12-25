@@ -1,0 +1,85 @@
+#!/bin/bash
+#
+# Simple check show Redis used memory info
+#
+# Usage: check_redis_memory [-H] [-w] [-c] [-f] [-r]
+#   -H --help       output this help
+#   -w --warn       warning treshold messages in queue used memory percent
+#   -c --crit       critical treshold messages in queue used memory percent
+#   -f --fwarn      warning treshold percent fragmentation memory
+#   -r --fcrit      critical treshold percent fragmentation memory
+#
+# Default setting (warn=85, crit=90)
+# Copyleft TolkIT (team@tolkit.top)
+# Author Aleksey Maltsev (lexa.thinker@gmail.com)
+state=3
+states_text=("ok" "warning" "critical" "unknown")
+warn=${warn:=85}
+crit=${crit:=90}
+f_warn=${f_warn:=150}
+f_crit=${f_crit:=90}
+
+# Check add key
+while [[ -n "$1" ]]; do
+    case $1 in
+        --warn | -w) warn="$2";
+           shift
+           ;;
+        --crit | -c) crit="$2";
+           shift
+           ;;
+        --fwarn | -f) f_warn="$2";
+           shift
+           ;;
+        --fcrit | -r) f_crit="$2";
+           shift
+           ;;
+        --help | -H) sed -n "2,14p" "$0" | tr -d '#';
+           exit 3
+           ;;
+        *) echo "Unknown argument: $1";
+           exit 3
+           ;;
+    esac
+    shift
+done
+
+memory_info=$(redis-cli info memory)
+
+if [[ -z ${memory_info} ]]; then
+    echo "check_redis_memory.nodata::data==0 | percent=0;;;;"
+    exit 3
+fi
+
+# extract memory info
+used_memory=$(echo "${memory_info}" | grep 'used_memory:' | awk -F: '{printf "%d", $2}')
+maxmemory=$(echo "${memory_info}" | grep 'maxmemory:' | awk -F: '{printf "%d", $2}')
+used_memory_rss=$(echo "${memory_info}" | grep 'used_memory_rss:' | awk -F: '{printf "%d",$2}')
+
+# check empty values from redis-cli
+if [[ -z ${used_memory} ]] || [[ -z ${maxmemory} ]] || [[ -z ${used_memory_rss} ]]; then
+    echo "check_redis_memory.noinfo::used_memory==0 | percent=0;;;;"
+    exit 3
+fi
+
+# calc percent
+(( used_memory_rss = used_memory_rss * 100 / used_memory ))
+(( used_memory = used_memory * 100 / maxmemory))
+
+perfdata="percent_used_memory=${used_memory};;;; percent_used_memory_rss=${used_memory_rss};;;;"
+output="used_memory==${used_memory}__used_memory_rss==${used_memory_rss}"
+
+# check tresholds
+if [[ ${used_memory} -ge ${crit} ]] || [[ ${used_memory_rss} -le ${f_crit} ]]; then
+    output="${output}__treshold==${crit}__frag_treshold==${f_crit}"
+    state=2
+elif [[ ${used_memory} -ge ${warn} ]] || [[ ${used_memory_rss} -ge ${f_warn} ]]; then
+    output="${output}__treshold==${warn}__frag_treshold==${f_warn}"
+    state=1
+else
+    output="${output}__treshold==${warn}__frag_treshold==${f_warn}"
+    state=0
+fi
+
+echo "check_redis_memory.${states_text[$state]}::${output} | ${perfdata}"
+exit ${state}
