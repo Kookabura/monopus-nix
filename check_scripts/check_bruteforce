@@ -85,19 +85,27 @@ count=$(tac ${log_file} | gawk -v p="${period}" '
         count = 0;
         s=systime();
         current_year = strftime("%Y", s);
+        current_month = strftime("%m", s);
     }
     /Failed password/{
-            month = $1;
-            day = $2;
-            t = $3
+            month = $1;   # Месяц
+            day = $2;     # День
+            t = $3;
 
             split(t, tp, ":");
-            hour = tp[1];
-            minute = tp[2];
-            second = tp[3];
+            hour = tp[1];    # Часы
+            minute = tp[2];  # Минуты
+            second = tp[3];  # Секунды
 
-            # creating a string for mktime
-            ds = sprintf("%d %d %d %d %d %d", current_year, m[month], day, hour, minute, second);
+            # If today is January and we get Dec lines in log then we should set the previous year
+            if ( current_month == "01" && m[month] == 12 ) {
+                year = current_year - 1
+            } else {
+                year = current_year
+            }
+
+	    # creating a string for mktime
+	    ds = sprintf("%d %d %d %d %d %d", year, m[month], day, hour, minute, second);
             ts = mktime(ds)
             if ( s - ts < p ) {
                 count++
