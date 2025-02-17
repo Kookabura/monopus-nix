@@ -2,22 +2,21 @@
 #
 # Simple check show Redis used memory info
 #
-# Usage: check_redis_memory [-H] [-w] [-c] [-f] [-r]
+# Usage: check_redis_memory [-H] [-w] [-c] [-f]
 #   -H --help       output this help
-#   -w --warn       warning treshold messages in queue used memory percent
-#   -c --crit       critical treshold messages in queue used memory percent
-#   -f --fwarn      warning treshold percent fragmentation memory
-#   -r --fcrit      critical treshold percent fragmentation memory
+#   -w --warn       warning treshold percent used memory percent
+#   -c --crit       critical treshold percent used memory percent
+#   -f --fwarn      warning treshold factor fragmentation memory
 #
-# Default setting (warn=85, crit=90)
+# Default setting (warn=85, crit=90, f_warn:=1.25)
 # Copyleft TolkIT (team@tolkit.top)
 # Author Aleksey Maltsev (lexa.thinker@gmail.com)
 state=3
 states_text=("ok" "warning" "critical" "unknown")
+
 warn=${warn:=85}
 crit=${crit:=90}
-f_warn=${f_warn:=150}
-f_crit=${f_crit:=90}
+f_warn=${f_warn:=1.25}
 
 # Check add key
 while [[ -n "$1" ]]; do
@@ -31,10 +30,7 @@ while [[ -n "$1" ]]; do
         --fwarn | -f) f_warn="$2";
            shift
            ;;
-        --fcrit | -r) f_crit="$2";
-           shift
-           ;;
-        --help | -H) sed -n "2,14p" "$0" | tr -d '#';
+        --help | -H) sed -n "2,13p" "$0" | tr -d '#';
            exit 3
            ;;
         *) echo "Unknown argument: $1";
@@ -44,42 +40,106 @@ while [[ -n "$1" ]]; do
     shift
 done
 
+#extract memory info
 memory_info=$(redis-cli info memory)
 
+# check memory info
 if [[ -z ${memory_info} ]]; then
-    echo "check_redis_memory.nodata::data==0 | percent=0;;;;"
+    echo "check_redis_memory.nodata::data==0"
     exit 3
 fi
 
-# extract memory info
-used_memory=$(echo "${memory_info}" | grep 'used_memory:' | awk -F: '{printf "%d", $2}')
-maxmemory=$(echo "${memory_info}" | grep 'maxmemory:' | awk -F: '{printf "%d", $2}')
-used_memory_rss=$(echo "${memory_info}" | grep 'used_memory_rss:' | awk -F: '{printf "%d",$2}')
+gawk -F: -v u_crit="$crit" -v u_warn="$warn" -v f_warn="$f_warn" '
+    BEGIN{
+        b_to_Gb=(1024 * 1024 * 1024)
+    }
 
-# check empty values from redis-cli
-if [[ -z ${used_memory} ]] || [[ -z ${maxmemory} ]] || [[ -z ${used_memory_rss} ]]; then
-    echo "check_redis_memory.noinfo::used_memory==0 | percent=0;;;;"
-    exit 3
-fi
+    #extract info
 
-# calc percent
-(( used_memory_rss = used_memory_rss * 100 / used_memory ))
-(( used_memory = used_memory * 100 / maxmemory))
+    /used_memory:/ {
+        used_memory = $2 / b_to_Gb
+    }
+    /mem_fragmentation_bytes:/ {
+        mem_fragmentation_bytes = $2 / b_to_Gb
+    }
+    /maxmemory:/ {
+        maxmemory = $2 / b_to_Gb
+    }
+    /used_memory_rss:/ {
+        used_memory_rss = $2 / b_to_Gb
+    }
+    /used_memory_peak:/ {
+        used_memory_peak = $2 / b_to_Gb
+    }
+    END {
+        # calc used memory and fragmentation
 
-perfdata="percent_used_memory=${used_memory};;;; percent_used_memory_rss=${used_memory_rss};;;;"
-output="used_memory==${used_memory}__used_memory_rss==${used_memory_rss}"
+        fragmentation = used_memory_rss / used_memory
+        p_used_memory = used_memory * 100 / maxmemory
+        p_used_memory_rss = used_memory_rss * 100 / maxmemory
 
-# check tresholds
-if [[ ${used_memory} -ge ${crit} ]] || [[ ${used_memory_rss} -le ${f_crit} ]]; then
-    output="${output}__treshold==${crit}__frag_treshold==${f_crit}"
-    state=2
-elif [[ ${used_memory} -ge ${warn} ]] || [[ ${used_memory_rss} -ge ${f_warn} ]]; then
-    output="${output}__treshold==${warn}__frag_treshold==${f_warn}"
-    state=1
-else
-    output="${output}__treshold==${warn}__frag_treshold==${f_warn}"
-    state=0
-fi
 
-echo "check_redis_memory.${states_text[$state]}::${output} | ${perfdata}"
-exit ${state}
+        # create perfdata and output to monopus
+
+        perfdata = sprintf("maxmemory=%0.2f;;;; " \
+                         "used_memory=%0.2f;;;; " \
+                         "used_memory_peak=%0.2f;;;; " \
+                         "fragmentation=%0.2f;;;; " \
+                         , maxmemory, used_memory, used_memory_peak, fragmentation)
+        output = sprintf("maxmemory==%0.2f" \
+                         "__p_used_memory==%0.1f" \
+                         "__used_memory_peak==%0.2f" \
+                         "__fragmentation==%0.2f" \
+                         , maxmemory, p_used_memory, used_memory_peak, fragmentation)
+
+        # check fragmentation and add output text
+        if (fragmentation < 1) {
+            f_code=2
+            text_code="swap_crit"
+            output = output"__frag_treshold==1"
+        }
+        else if (fragmentation > 1.5) {
+            f_code=2
+            text_code="frag_crit"
+            output = output"__frag_treshold==1.5"
+        }
+        else if (fragmentation > f_warn && fragmentation < 1.5) {
+            f_code=1
+            text_code="frag_warn"
+            output = output"__frag_treshold=="f_warn
+        }
+        else {
+            f_code=0
+            text_code="frag_ok"
+            output = output"__frag_treshold=="f_warn
+        }
+
+        # check used memory and add output text
+        if (p_used_memory > u_crit) {
+            u_code=2
+            text_code=text_code"_used_memory_crit"
+            output = output"__treshold=="u_crit
+        }
+        else if (p_used_memory > u_warn) {
+            u_code=1
+            text_code=text_code"_used_memory_warn"
+            output = output"__treshold=="u_warn
+        }
+        else {
+            u_code=0
+            text_code=text_code"_used_memory_ok"
+            output = output"__treshold=="u_warn
+        }
+
+        #check code priority
+        if (u_code > f_code) {
+            code = u_code
+        }
+        else {
+            code = f_code
+        }
+
+        printf ("check_redis_memory.%s::%s | %s\n",text_code, output, perfdata)
+        exit code
+    }
+' <<< "$memory_info"
