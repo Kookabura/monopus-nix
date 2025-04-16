@@ -2,14 +2,14 @@
 #
 # Simple check show Redis used memory info
 #
-# Usage: check_redis_memory [-H] [-w] [-c] [-f]
+# Usage: check_redis_memory [-H] [-w] [-c] [-f] [-b]
 #   -H --help       output this help
 #   -w --warn       warning treshold percent used memory percent
 #   -c --crit       critical treshold percent used memory percent
 #   -f --fwarn      warning treshold factor fragmentation memory
 #   -b --block      block warning/error status if low memory use Redis. Use are percentages.
 #
-# Default setting (warn=85, crit=90, f_warn:=1.25)
+# Default setting (warn=85, crit=90, f_warn=1.25, block=10)
 # Copyleft TolkIT (team@tolkit.top)
 # Author Aleksey Maltsev (lexa.thinker@gmail.com)
 state=3
@@ -35,7 +35,7 @@ while [[ -n "$1" ]]; do
         --block | -b) block="$2";
            shift
            ;;
-        --help | -H) sed -n "2,13p" "$0" | tr -d '#';
+        --help | -H) sed -n "2,14p" "$0" | tr -d '#';
            exit 3
            ;;
         *) echo "Unknown argument: $1";
