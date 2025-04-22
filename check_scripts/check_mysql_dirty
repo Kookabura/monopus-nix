@@ -1,0 +1,80 @@
+#!/bin/bash
+#
+# Simple check show queries per second and slow queries
+#
+# Usage: check_mysql_queries [-H] [-w] [-h] [-u] [-p]
+#   -H --help       output this help
+#   -w --warn       treshold warning procentage dirty pages.
+#   -h --host       hostname for connecting to the database
+#   -u --user       database user under which name queries are execute.
+#   -p --pass       password for user under connect to database. 
+#
+# Copyleft TolkIT (team@tolkit.top)
+# author Sergey Egorushkin (SeroEgor@Gmail.com)
+# default values
+host=${host:='localhost'}               # hostname within database
+user=${user:='bx_clusteruser'}          # user name in database
+pass=${pass:=''}                        # password for database
+warn=${warn:=10}                        # treshold warning
+states_text=("ok" "warning" "critical" "unknown")
+
+while [[ -n "$1" ]]; do
+    case $1 in
+        --warn | -w)
+            slow=$2
+            shift
+            ;;
+        --host | -h)
+            host=$2
+            shift
+            ;;
+        --user | -u)
+            user=$2
+            shift
+            ;;
+        --pass | -p)
+            pass=$2
+            shift
+            ;;
+        --help | -H)
+            sed -n '2,13p' "$0" | tr -d '#'
+            exit 3
+            ;;
+        *)
+            echo "Unknown argument: $1"
+            exit 3
+            ;;
+    esac
+    shift
+done
+# query SELECT values and calculate inplace size buffer pool and dirty pages in % from total size buffer pool
+query="SELECT
+ROUND(@@innodb_buffer_pool_size/1024/1024/1024, 2) AS total,
+ROUND(( SELECT variable_value
+        FROM   performance_schema.global_status
+        WHERE  variable_name = 'Innodb_buffer_pool_pages_free') * @@innodb_page_size/1024/1024/1024, 2 ) AS free,
+ROUND(( SELECT variable_value
+        FROM   performance_schema.global_status
+        WHERE  variable_name = 'Innodb_buffer_pool_pages_data') * @@innodb_page_size/1024/1024/1024, 2 ) AS data,
+ROUND(( SELECT variable_value
+        FROM   performance_schema.global_status
+        WHERE  variable_name = 'Innodb_buffer_pool_pages_dirty') /
+(       SELECT variable_value
+        FROM   performance_schema.global_status
+        WHERE  variable_name = 'Innodb_buffer_pool_pages_total') * 100, 2 ) AS dirty;"
+
+if [ -z "${pass}"]; then # if password is empty
+    pool=$(mysql -e "${query}" | tail -n 1)
+else
+    pool=$(mysql -h ${host} -u ${user} -p${pass} -e "${query}" 2>&1 | tail -n 1)   #set new values
+fi
+read total free data dirty <<< "$pool"  # parse value from string
+
+if [ $(echo "$dirty > $warn" | bc -l) -eq 1 ]; then
+  state=1   # warning
+else
+  state=0   # OK
+fi
+# output values and exit script
+echo "check_mysql_dirty.${states_text[$state]}::dirty==${dirty}__warn_dirty==${warn} | total_gb=${total};;;; free_gb=${free};;;; data_gb=${data};;;; dirty=${dirty};;;;"
+exit $state
