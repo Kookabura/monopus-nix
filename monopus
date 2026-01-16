@@ -46,8 +46,8 @@ usage() {
   cat <<EOF >&2
  `basename $0`: monopus service
 ./`basename $0` [-h] -v
- 	-h 		- print this message
- 	-v		- Verbose
+        -h              - print this message
+        -v              - Verbose
 EOF
   exit 0
 }
@@ -221,9 +221,22 @@ while true; do
     fi
 
     echo "$cid: Waiting"
-    wait ${checks[$cid,pid]}
+    state=3
+    max_retry=3
+    retry=0
+    while [ "$state" -ne 0 ] && [ "$retry" -le "$max_retry" ]; do
+        wait ${checks[$cid,pid]}
+        state=$?
+        log "$cid: State $state"
+                                log "$cid: Result $(</tmp/$cid.out)"
+                                (( retry++  ))
+        if [ "$state" -ne 0 ] && [ "$retry" -le "$max_retry"  ]; then
+                                                log "$cid: Retry #$retry"
+            check_sub $cid &
+            checks[$cid,pid]=$!
+        fi
+    done
     #checks[$cid,pid]=''
-    state=$?
     #res=${checks[$cid,result]}
     prev_state=${checks[$cid,state]}
     log "$cid: State: $prev_state → $state"
@@ -239,8 +252,8 @@ while true; do
       need_send=1
     else # The time has elapsed?
       if [ $next_ts -eq 0 -o $next_ts -le $cur_time ]; then
-	need_send=1
-	# And set next interval
+                                need_send=1
+                                # And set next interval
       fi
     fi
 
@@ -257,8 +270,8 @@ while true; do
       log "$cid: Sending to server"
       make_request "id=$cid&mon_action=check/handle_result&result=$output&state=$state"
       if [ ${output_arr[data,active]} != true ]; then # Remove the check
-	log "$cid: Removing the check, it's not active anymore"
-	for k in ${!checks[@]}; do [ ${a%%,*} = $cid ] && unset checks[$k]; done
+                                log "$cid: Removing the check, it's not active anymore"
+                                for k in ${!checks[@]}; do [ ${a%%,*} = $cid ] && unset checks[$k]; done
       fi
 
       # Если в ответе мы приходит параметр push_checks=true, то мы запрашиваем
