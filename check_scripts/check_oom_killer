@@ -23,7 +23,7 @@ else
 fi
 
 if [ ! -f "$LOG" ]; then
-  echo "check_oom_killer.path_error::path==${LOG} || count=0"
+  echo "check_oom_killer.path_error::path==${LOG} | count=0"
   exit 2
 fi 
 (( period = MIN * 60 ))                             # how deep check log in seconds
@@ -54,11 +54,11 @@ fail=$(tac "$LOG" | grep "Out of memory" | awk -v y="$year" -v p="$period" -v os
   }')                                               # return list fails daemons
 
 if [ -z "$fail" ]; then                             # if list zero, then return ok
-  echo "check_oom_killer.ok::mins==${MIN} || count=0"
+  echo "check_oom_killer.ok::mins==${MIN} | count=0"
 else                                                # else return fail state
   count=$(echo "$fail" | tr -cd ',' | wc -c)        # count failed daemons
   fail=$(echo "$fail" | tr -d "()" | sed 's/..$//') # remove "()" and last 2 chars
-  echo "check_oom_killer.critical::mins==${MIN}__demons==${fail} || count=${count}"
+  echo "check_oom_killer.critical::mins==${MIN}__demons==${fail} | count=${count}"
   exit 2
 fi
 exit 0
