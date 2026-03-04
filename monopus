@@ -37,7 +37,11 @@ get_all_vals() {
       output_arr[$varname]="$line"
       varname=
     else
-      varname="${line:1:-1}"
+      if [ "${#line}" -ge 2 ]; then
+        varname="${line:1:-1}"
+      else
+        varname="${line}"
+      fi
     fi
   done <<< "$awkout"
 }
