@@ -40,7 +40,7 @@ get_all_vals() {
       if [ "${#line}" -ge 2 ]; then
         varname="${line:1:-1}"
       else
-        varname="${line}"
+        varname="${line:1}"
       fi
     fi
   done <<< "$awkout"
