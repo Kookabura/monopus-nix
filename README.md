@@ -2,7 +2,8 @@
 monOpus.io Linux client written on bash
 
 ## Install
-curl -fsSL https://raw.githubusercontent.com/Kookabura/monopus-nix/develop/inst_wrapper.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Kookabura/monopus-nix/develop/inst_wrapper.sh -o inst_wrapper.sh
+bash inst_wrapper.sh
 
 ## Manual installation steps
 1. Download latest zip package from https://github.com/Kookabura/monopus-nix/releases/latest
