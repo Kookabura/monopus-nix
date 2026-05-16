@@ -84,7 +84,7 @@ make_request() {
 # Creates site config on the endpoint
 initial_config() {
   log "Getting our IP"
-  addr=$(curl ipinfo.io/ip)
+  addr=$(curl -s ipinfo.io/ip)
   memory=$(free --giga|awk '$1=="Mem:"{print $2}')
   #drives=$(df|awk '/^\//{arr=$1","arr}END{print arr}')
   drives=$(df --exclude-type=tmpfs --exclude-type=squashfs --exclude-type=devtmpfs --exclude-type=overlay|awk 'NR>1{arr=$NF","arr}END{print arr}')
