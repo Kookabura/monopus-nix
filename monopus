@@ -95,6 +95,7 @@ initial_config() {
 
   # Add id to a file
   set_param $CFG_FN host_id ${output_arr[data,id]}
+  host_id=${output_arr[data,id]}
 }
 
 # Check subroutine for $1 cid, uses output_arr with config

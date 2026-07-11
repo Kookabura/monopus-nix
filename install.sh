@@ -78,7 +78,6 @@ do_install()
   
   cp monopus.service /etc/systemd/system/
   systemctl enable monopus
-  systemctl start monopus
   
   log "Programs installed"
 }
@@ -132,3 +131,5 @@ fi
 do_install $KEEP_CFG
 
 [ "$CFG_API_KEY" ] && set_param $CFG_FN api_key $CFG_API_KEY
+
+systemctl start monopus
