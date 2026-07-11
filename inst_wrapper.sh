@@ -12,4 +12,3 @@ tar -xzf develop.tar.gz
 cd monopus-nix-develop
 chmod -R +x ./install.sh ./json.sh ./common.sh ./monopus ./check_scripts
 ./install.sh -k $API_KEY
-systemctl restart monopus
