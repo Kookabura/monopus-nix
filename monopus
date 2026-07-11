@@ -25,6 +25,10 @@ log() {
   [ "$verbose" ] && echo "$(date +%H:%M:%S) $*"
 }
 
+int_or_default() {
+  [[ "$1" =~ ^-?[0-9]+$ ]] && echo "$1" || echo "$2"
+}
+
 # Gets all values from parsed JSON (passed on stdin). Uses external output_arr
 get_all_vals() {
   unset output_arr
@@ -183,7 +187,7 @@ while true; do
     declare -A checks # What checks should run, storing time of next invocation here, storing everything in fact
     for cid in $check_ids; do
       # Initialise previous state from server for everyone
-      checks[$cid,state]=${checks_config[$cid,state]}
+      checks[$cid,state]=$(int_or_default "${checks_config[$cid,state]}" -1)
       # [ $cid = 513 -o $cid = 516 -o $cid = 517 ] && continue
       [ "${checks[$cid,next_ts]}" ] || checks[$cid,next_ts]=0 # Time of the next check: will always trigger
     done
@@ -207,9 +211,9 @@ while true; do
 # message.
 
     # Check if we need to start it
-    state=${checks[$cid,state]}
-    next_ts=${checks[$cid,next_ts]}
-    [ $state -eq 0 -a $next_ts -ne 0 -a $next_ts -gt $cur_time ] && continue
+    state=$(int_or_default "${checks[$cid,state]}" -1)
+    next_ts=$(int_or_default "${checks[$cid,next_ts]}" 0)
+    [ "$state" -eq 0 ] && [ "$next_ts" -ne 0 ] && [ "$next_ts" -gt "$cur_time" ] && continue
     # In any other case need to run the check
     log "$cid: Starting check"
 
@@ -243,7 +247,7 @@ while true; do
     done
     #checks[$cid,pid]=''
     #res=${checks[$cid,result]}
-    prev_state=${checks[$cid,state]}
+    prev_state=$(int_or_default "${checks[$cid,state]}" -1)
     log "$cid: State: $prev_state → $state"
     # read state output <<< $res
     output=$(</tmp/$cid.out) # Empty if there's no file
@@ -251,12 +255,12 @@ while true; do
     need_send=
     # [ $prev_state -eq 0 ] && need_send=1
     cur_time=$(date +%s)
-    next_ts=${checks[$cid,next_ts]}
-    if [ $state -ne $prev_state ]; then
+    next_ts=$(int_or_default "${checks[$cid,next_ts]}" 0)
+    if [ "$state" -ne "$prev_state" ]; then
       log "$cid: State has changed" # Need to send
       need_send=1
     else # The time has elapsed?
-      if [ $next_ts -eq 0 -o $next_ts -le $cur_time ]; then
+      if [ "$next_ts" -eq 0 ] || [ "$next_ts" -le "$cur_time" ]; then
                                 need_send=1
                                 # And set next interval
       fi
@@ -266,7 +270,7 @@ while true; do
 
     if [ "$need_send" ]; then
       # Setup next wake up time (if status is not 0, it'll start anyway)
-      interval=${checks_config[$cid,interval]}
+      interval=$(int_or_default "${checks_config[$cid,interval]}" 1)
       next_ts=$(date +%s)
       next_ts=$((next_ts+$interval*60))
       checks[$cid,next_ts]=$next_ts
