@@ -1,88 +1,214 @@
 #!/bin/bash
 #
-# Simple count security update not installed in system
+# Check for pending security package updates.
 #
 # Usage: check_sec_update [-w warning] [-c critical] [-H]
-#   -w --warning    number security update above or equal is generate warning
-#   -c --critical   number security update above or equal is generate error
+#   -w --warning    warning threshold (default: 1)
+#   -c --critical   critical threshold (default: 5)
 #   -H --help       output this help
-# Example
-# ./check_sec_update -w 3 -c 5
-# example output: check_sec_update_ok::sys==debian | sec_update=2;;;;
 #
-# Copyleft TolkIT (team@tolkit.top)
-# author Sergey Egorushkin (SeroEgor@Gmail.com)
 
-while [[ -n "$1" ]]; do
-  case $1 in
-  --warning | -w)
-    warn=$2
-    shift
-    ;;
-  --critical | -c)
-    crit=$2
-    shift
-    ;;
-  --help | -H)
-    sed -n '2,14p' "$0" | tr -d '#'
-    exit 3
-    ;;
-  *)
-    echo "Unknown argument: $1"
-    exit 3
-    ;;
+warn=1
+crit=5
+os="unknown"
+family=""
+
+log() {
+  printf 'check_sec_update: %s\n' "$*" >&2
+}
+
+print_help() {
+  sed -n '2,9p' "$0" | sed 's/^# *//'
+}
+
+emit_result() {
+  local key=$1
+  local state=$2
+  local count=$3
+  local packages=$4
+
+  log "result: state=$state, security updates=$count"
+
+  if [ -n "$packages" ]; then
+    printf 'check_sec_update.%s::sys==%s__sec==%s__packages==%s | sec_update=%s;;;;\n' \
+      "$key" "$os" "$count" "$packages" "$count"
+  else
+    printf 'check_sec_update.%s::sys==%s__sec==%s | sec_update=%s;;;;\n' \
+      "$key" "$os" "$count" "$count"
+  fi
+  exit "$state"
+}
+
+unknown() {
+  [ -n "${1:-}" ] && log "$1"
+  emit_result "unk" 3 0 ""
+}
+
+package_manager_error() {
+  if [ -n "${command_output:-}" ]; then
+    error_line=${command_output%%$'\n'*}
+    log "package manager error: $error_line"
+  else
+    log "package manager returned no usable data"
+  fi
+
+  case "$family" in
+    rpm) emit_result "error-centos" 2 0 "" ;;
+    apt) emit_result "error-debubuntu" 2 0 "" ;;
+    *)   unknown "package manager family is unknown" ;;
   esac
-  shift
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --warning|-w)
+      [ $# -ge 2 ] || unknown "warning threshold is missing"
+      warn=$2
+      shift 2
+      ;;
+    --critical|-c)
+      [ $# -ge 2 ] || unknown "critical threshold is missing"
+      crit=$2
+      shift 2
+      ;;
+    --help|-H)
+      print_help
+      exit 3
+      ;;
+    *)
+      unknown "unknown argument: $1"
+      ;;
+  esac
 done
 
-warn=${warn:=3}
-crit=${crit:=5}
-os=""
-sec=0
-path="/opt/monopus/check_scripts"
-
-if [[ $warn -ge $crit ]]; then
-  echo "check_sec_update.warcri"
-  exit 2
+if ! [[ "$warn" =~ ^[0-9]+$ && "$crit" =~ ^[0-9]+$ ]] || [ "$warn" -gt "$crit" ]; then
+  unknown "invalid thresholds: warning=$warn, critical=$crit"
 fi
 
-if [ -s /opt/monopus/tmp/update-security ]; then  # if exist tmp-file with previous values
-    sec=$(< /opt/monopus/tmp/update-security)     # read them
-else
-    touch /opt/monopus/tmp/update-security        # if not exist tmp-file - create them
+os_release_file=${OS_RELEASE_FILE:-/etc/os-release}
+
+if [ ! -r "$os_release_file" ]; then
+  unknown "cannot read $os_release_file"
 fi
 
-# check name os, now support Centos, Debian and Ubuntu. Count security update avariable in var "sec"
-if [ "$( < /etc/os-release grep -w "ID" | grep -c "centos")" -eq 1 ]; then      #CentOS
-    os="Centos"
-    sh ${path}/security-update.sh "$os" &     # run script for check security update
-elif [ "$( < /etc/os-release grep -w "ID" | grep -c "debian")" -eq 1 ]; then    #Debian
-    os="Debian"
-    sh ${path}/security-update.sh "$os" &
-elif [ "$( < /etc/os-release grep -w "ID" | grep -c "ubuntu")" -eq 1 ]; then    #Ubuntu
+# shellcheck disable=SC1091
+. "$os_release_file"
+
+case "${ID,,}" in
+  ubuntu)
+    family="apt"
     os="Ubuntu"
-    sh ${path}/security-update.sh "$os" &
-else                                                                            #not support 
-    os=$( < /etc/os-release grep -w "ID" | awk '{print substr($0, 4, length($0)-1)}' | sed 's/"//g')
-    echo "check_sec_update.unk::sys==${os}__sec==0 | sec_update=0;;;;"
-    exit 2
-fi
+    ;;
+  debian)
+    family="apt"
+    os="Debian"
+    ;;
+  centos)
+    family="rpm"
+    os="Centos"
+    ;;
+  rhel)
+    family="rpm"
+    os="RHEL"
+    ;;
+  rocky)
+    family="rpm"
+    os="Rocky"
+    ;;
+  almalinux)
+    family="rpm"
+    os="AlmaLinux"
+    ;;
+  ol)
+    family="rpm"
+    os="OracleLinux"
+    ;;
+  fedora)
+    family="rpm"
+    os="Fedora"
+    ;;
+  *)
+    os=${ID:-unknown}
+    for os_like in ${ID_LIKE:-}; do
+      case "${os_like,,}" in
+        debian|ubuntu)
+          family="apt"
+          break
+          ;;
+        rhel|centos|fedora)
+          family="rpm"
+          break
+          ;;
+      esac
+    done
+    ;;
+esac
 
-if [ "$sec" = "error" ] && [ "$os" = "Centos" ]; then
-    echo "check_sec_update.error-centos"
-    exit 2
-elif [ "$sec" = "error" ] && { [ "$os" = "Debian" ] || [ "$os" = "Ubuntu" ]; }; then
-    echo "check_sec_update.error-debubuntu"
-    exit 2
-fi
+[ -n "$family" ] || unknown "unsupported operating system: $os"
 
-if [ "$sec" -ge "$crit" ]; then
-    echo "check_sec_update.cri::sys==${os}__sec==${sec} | sec_update=${sec};;;;"
-    exit 2
-elif [ "$sec" -ge "$warn" ]; then
-    echo "check_sec_update.war::sys==${os}__sec==${sec} | sec_update=${sec};;;;"
-    exit 1;
+for required_command in awk sort paste; do
+  command -v "$required_command" >/dev/null 2>&1 || unknown "required command is missing: $required_command"
+done
+
+packages=""
+
+if [ "$family" = "rpm" ]; then
+  if command -v dnf >/dev/null 2>&1; then
+    package_manager="dnf"
+  elif command -v yum >/dev/null 2>&1; then
+    package_manager="yum"
+  else
+    unknown "neither dnf nor yum is installed"
+  fi
+
+  command_started=$SECONDS
+  log "checking security updates with $package_manager"
+  command_output=$(LC_ALL=C "$package_manager" -q --security check-update 2>&1)
+  command_status=$?
+  log "$package_manager finished in $((SECONDS - command_started)) seconds with exit code $command_status"
+
+  # Both yum and dnf return 100 when updates are available.
+  case "$command_status" in
+    0)
+      packages=""
+      ;;
+    100)
+      packages=$(printf '%s\n' "$command_output" |
+        awk '$0 ~ /^[[:alnum:]_+.-]+\.[[:alnum:]_]+[[:space:]]/ && NF >= 3 {print $1}' |
+        sort -u)
+      [ -n "$packages" ] || package_manager_error
+      ;;
+    *)
+      package_manager_error
+      ;;
+  esac
 else
-    echo "check_sec_update.ok::sys==${os}__sec==${sec} | sec_update=${sec};;;;"
-    exit 0;
+  command -v apt >/dev/null 2>&1 || unknown "apt is not installed"
+
+  command_started=$SECONDS
+  log "checking security updates with apt"
+  command_output=$(LC_ALL=C apt list --upgradable 2>&1)
+  command_status=$?
+  log "apt finished in $((SECONDS - command_started)) seconds with exit code $command_status"
+  [ "$command_status" -eq 0 ] || package_manager_error
+
+  packages=$(printf '%s\n' "$command_output" |
+    awk '$1 ~ /^[^/]+\/[^[:space:]]*security/ {split($1, package, "/"); print package[1]}' |
+    sort -u)
+fi
+
+if [ -n "$packages" ]; then
+  count=$(printf '%s\n' "$packages" | awk 'NF {count++} END {print count+0}')
+  package_list=$(printf '%s\n' "$packages" | paste -sd, -)
+else
+  count=0
+  package_list=""
+fi
+
+if [ "$count" -ge "$crit" ]; then
+  emit_result "cri" 2 "$count" "$package_list"
+elif [ "$count" -ge "$warn" ]; then
+  emit_result "war" 1 "$count" "$package_list"
+else
+  emit_result "ok" 0 "$count" "$package_list"
 fi
